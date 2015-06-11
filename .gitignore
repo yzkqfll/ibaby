@@ -1,3 +1,17 @@
+settings/
+CC2541 Slave/
+*.dep
+
+*.pbd
+*.tmp
+*.browse
+*.map
+*.d51
+*.hex
+*.cout
+*.pbi
+*.r51
+
 # Object files
 *.o
 *.ko
