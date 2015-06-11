@@ -29,6 +29,7 @@
 #define ADC_LOW_PRECISION_PIN P0_1
 #define ADC_LOW_PRECISION_BIT 1
 
+#define PRESISION_CHANGE_MARGIN 20 /* 2 celsius */
 #define HIGH_PRESISION_TEMP_MIN 290
 #define HIGH_PRESISION_TEMP_MAX 450
 
@@ -93,11 +94,11 @@ unsigned short ther_get_current_temp(void)
 
 	temp = ther_get_temp(t->presision_used);
 
-	if ((t->presision_used == LOW_PRESISION) && (temp > HIGH_PRESISION_TEMP_MIN) && (temp < HIGH_PRESISION_TEMP_MAX)) {
+	if ((t->presision_used == LOW_PRESISION) && (temp > HIGH_PRESISION_TEMP_MIN + PRESISION_CHANGE_MARGIN)) {
 		print(LOG_INFO, MODULE "change to high presision\r\n");
 		t->presision_used = HIGH_PRESISION;
 
-	} else if ((t->presision_used == HIGH_PRESISION) && (temp < HIGH_PRESISION_TEMP_MIN || temp > HIGH_PRESISION_TEMP_MAX)) {
+	} else if ((t->presision_used == HIGH_PRESISION) && (temp < HIGH_PRESISION_TEMP_MIN - PRESISION_CHANGE_MARGIN)) {
 		print(LOG_INFO, MODULE "change to low presision\r\n");
 		t->presision_used = LOW_PRESISION;
 	}
