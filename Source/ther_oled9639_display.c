@@ -127,7 +127,7 @@ static void oled_show_temp(bool show, unsigned short temp)
 
 }
 
-static void oled_show_dumy_temp(bool show)
+static void oled_show_dummy_temp(bool show)
 {
 	if (show) {
 		oled_drv_write_block(2, 5, 10, 23, dummy_celsius_24x13);
@@ -220,7 +220,7 @@ void oled_update_first_picture(unsigned char type, unsigned short val)
 		break;
 
 	case OLED_CONTENT_DUMMY_TEMP:
-		oled_show_dumy_temp(TRUE);
+		oled_show_dummy_temp(TRUE);
 		break;
 
 	default:
@@ -237,9 +237,7 @@ void oled_show_second_picture(void)
 		od->device_init = TRUE;
 	}
 
-	print(LOG_DBG, "111\r\n");
 	oled_test();
-	print(LOG_DBG, "222\r\n");
 
 	oled_drv_display_on();
 }
@@ -253,9 +251,9 @@ void oled_show_welcome(void)
 		od->device_init = TRUE;
 	}
 
-	// TODO
-//	oled_drv_write_block(0, MAX_PAGE, 0, MAX_COL, welcome_96_39);
-	oled_drv_fill_block(0, 4, 0, MAX_COL, 0xff);
+	oled_show_time(TRUE);
+
+	oled_show_dummy_temp(TRUE);
 
 	oled_drv_display_on();
 }
