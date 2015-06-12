@@ -125,7 +125,7 @@ static void stop_buzzer(void)
 //	P1SEL &= (uint8) ~HAL_BUZZER_P1_GPIO_PINS;
 }
 
-void ther_play_music(unsigned char music_book)
+void ther_buzzer_play_music(unsigned char music_book)
 {
 	struct ther_buzzer *b = &buzzer;
 
@@ -151,7 +151,7 @@ void ther_stop_music(void)
 	}
 }
 
-void ther_buzzer_play_music(void)
+void ther_buzzer_check_music(void)
 {
 	struct ther_buzzer *b = &buzzer;
 	unsigned char tone;

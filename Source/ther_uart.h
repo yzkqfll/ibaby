@@ -8,6 +8,9 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 int uart_recv(int port, unsigned char **rx_buf, unsigned short *rx_len);
 int uart_send(int port, unsigned char *buf, unsigned short len);
 
+/*
+ * Baudrate
+ */
 enum {
 	UART_BAUD_RATE_9600,
 	UART_BAUD_RATE_19200,

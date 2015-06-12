@@ -15,9 +15,9 @@ static unsigned char log_level = LOG_DBG;
 static char print_buf[PRINT_BUF_LEN];
 
 
-#define USER_INPUT_PORT 0
+#define UART_PORT 0
 
-#define PRINT_PORT USER_INPUT_PORT
+#define PRINT_PORT UART_PORT
 
 static void msg_dispatch(unsigned char port, unsigned char *buf, unsigned char len)
 {
@@ -37,15 +37,17 @@ int print(unsigned char level, char *fmt, ...)
 	va_start(args, fmt);
 	n = vsprintf(print_buf, fmt, args);
 //	n = vsnprintf(print_buf, PRINT_BUF_LEN, fmt, args);
-	va_end(args);
+	if (n > 100)
+		n = 100;
 	uart_send(PRINT_PORT, (unsigned char *)print_buf, n);
+	va_end(args);
 
 	return n;
 }
 
 void uart_comm_init(void)
 {
-	uart_init(USER_INPUT_PORT, UART_BAUD_RATE_115200, msg_dispatch);
+	uart_init(UART_PORT, UART_BAUD_RATE_115200, msg_dispatch);
 
 	print(LOG_INFO, MODULE "uart init ok\r\n");
 

@@ -78,7 +78,7 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 	}
 
 	config.flowControl = FALSE;
-	if (config.flowControl)
+//	if (config.flowControl)
 		config.flowControlThreshold = 48;
 	config.rx.maxBufSize = UART_RX_BUF_LEN;
 	config.tx.maxBufSize = UART_TX_BUF_LEN;

@@ -209,7 +209,7 @@ static void ther_power_on(struct ther_info *ti)
 
 	/* buzzer init */
 	ther_buzzer_init(ti->task_id);
-	ther_play_music(BUZZER_MUSIC_SYS_BOOT);
+	ther_buzzer_play_music(BUZZER_MUSIC_SYS_BOOT);
 
 	/* oled display init */
 	oled_display_init();
@@ -362,14 +362,14 @@ static void ther_init_device(struct ther_info *ti)
 
 	/* buzzer init */
 	ther_buzzer_init(ti->task_id);
-	ther_play_music(BUZZER_MUSIC_SYS_BOOT);
+	ther_buzzer_play_music(BUZZER_MUSIC_SYS_BOOT);
 
 	/* oled display init */
 	oled_display_init();
 	ti->display_picture = OLED_DISPLAY_OFF;
 
 	/* spi flash */
-	ther_spi_w25x_init();
+//	ther_spi_w25x_init();
 
 	/* temp init */
 	ther_temp_init();
@@ -457,10 +457,13 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			ti->temp_current = ther_get_current_temp();
 
 			if (ti->ble_connect) {
-				if (ti->temp_notification_enable)
+				if (ti->temp_notification_enable) {
 					ther_send_temp_notify(ble_get_gap_handle(), ti->temp_current);
-				if (ti->temp_indication_enable)
+					ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);
+				} else if (ti->temp_indication_enable) {
 					ther_send_temp_indicate(ble_get_gap_handle(), ti->task_id, ti->temp_current);
+					ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);
+				}
 			} else {
 				// TODO: save to local
 			}
@@ -501,7 +504,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	}
 
 	if(events & TH_PERIODIC_MEAS_EVT) {
-		ther_play_music(BUZZER_MUSIC_SEND_TEMP);
+		ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);
 
 //		ther_temp_periodic_meas(ti);
 
@@ -516,7 +519,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 	/* buzzer event */
 	if (events & TH_BUZZER_EVT) {
-		ther_buzzer_play_music();
+		ther_buzzer_check_music();
 
 		return (events ^ TH_BUZZER_EVT);
 	}
@@ -571,11 +574,12 @@ void Thermometer_Init(uint8 task_id)
 	osal_start_timerEx(ti->task_id, TH_START_SYSTEM_EVT, 200);
 }
 
-void HalLedEnterSleep(void)
-{
+/*
+ * Just for compiling
+ */
+void HalLedEnterSleep(void) {}
 
-}
-void HalLedExitSleep(void)
-{
-
-}
+/*
+ * Just for compiling
+ */
+void HalLedExitSleep(void) {}
