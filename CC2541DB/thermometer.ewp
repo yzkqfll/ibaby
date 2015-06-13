@@ -289,7 +289,7 @@
           <state>HAL_KEY=FALSE</state>
           <state>HAL_ADC=FALSE</state>
           <state>XOSC32K_INSTALLED=FALSE</state>
-          <state>POWER_SAVING</state>
+          <state>xPOWER_SAVING</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
