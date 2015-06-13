@@ -69,7 +69,8 @@ struct ther_buzzer buzzer;
 #define TONE_OFFSET 0
 #define LEN 5
 static const unsigned short music_books[BUZZER_MUSIC_NR][LEN] =  {
-	TONE_HIGH, 300, 200, 200, 100, /* sys boot */
+	TONE_HIGH, 300, 200, 200, 100, /* power on */
+	TONE_HIGH, 300, 200, 200, 100, /* power off */
 	TONE_LOW, 400, 200, 300, 100,  /* send temp */
 	TONE_LOW, 400, 200, 300, 100,  /* warning */
 };
@@ -137,7 +138,7 @@ void ther_buzzer_play_music(unsigned char music_book)
 	osal_start_timerEx(b->task_id, TH_BUZZER_EVT, 200);
 }
 
-void ther_stop_music(void)
+void ther_buzzer_stop_music(void)
 {
 	struct ther_buzzer *b = &buzzer;
 
@@ -177,6 +178,8 @@ void ther_buzzer_check_music(void)
 void ther_buzzer_init(unsigned char task_id)
 {
 	struct ther_buzzer *b = &buzzer;
+
+	print(LOG_INFO, MODULE "buzzer init\r\n");
 
 	b->task_id = task_id;
 
