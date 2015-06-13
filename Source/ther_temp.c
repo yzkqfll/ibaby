@@ -36,6 +36,7 @@
 struct ther_temp {
 	unsigned char presision_used;
 
+	/* save power */
 	unsigned short low_presision_pre_adc;
 	unsigned short low_presision_pre_temp;
 };
@@ -85,7 +86,7 @@ void ther_temp_power_on(void)
 }
 
 /*
- * return value: 377 => 37.7 du
+ * return value: 377 => 37.7 Celsius
  */
 unsigned short ther_get_current_temp(void)
 {
