@@ -9,7 +9,7 @@
 #include "thermometer.h"
 #include "ther_button.h"
 
-#define MODULE "[BUTTON] "
+#define MODULE "[THER BUTTON] "
 
 
 /*
@@ -26,7 +26,7 @@
 #define LONG_PRESS_TIME 1200
 
 struct ther_button {
-	unsigned char father_task_id;
+	unsigned char task_id;
 
 	unsigned short eclipse_ms;
 };
@@ -64,12 +64,12 @@ void ther_measure_button_time(void)
 			msg->type = SHORT_PRESS;
 		}
 
-		osal_msg_send(bt->father_task_id, (uint8 *)msg);
+		osal_msg_send(bt->task_id, (uint8 *)msg);
 
 		return;
 	}
 
-	osal_start_timerEx(bt->father_task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);
+	osal_start_timerEx(bt->task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);
 	return;
 
 }
@@ -80,7 +80,7 @@ void ther_button_init(unsigned char task_id)
 
 	print(LOG_INFO, MODULE "button init\r\n");
 
-	bt->father_task_id = task_id;
+	bt->task_id = task_id;
 
 	/*
 	 * P1.3 is push button
@@ -119,8 +119,8 @@ HAL_ISR_FUNCTION(button_isr, P1INT_VECTOR)
 
 		P1IFG &= ~BV(PUSH_BUTTON_BIT);
 
-		osal_stop_timerEx(bt->father_task_id, TH_BUTTON_EVT);
-		osal_start_timerEx(bt->father_task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);
+		osal_stop_timerEx(bt->task_id, TH_BUTTON_EVT);
+		osal_start_timerEx(bt->task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);
 		bt->eclipse_ms = 0;
 	}
 	/* clear P1 interrupt pending flag */
