@@ -21,6 +21,7 @@ struct flash_device {
 
 //#define ther_spi_flash_init() ther_spi_w25x_init()
 uint8 ther_spi_w25x_init(void);
+void ther_spi_w25x_test(void);
 
 #endif
 

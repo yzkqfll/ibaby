@@ -14,7 +14,7 @@
 #include "ther_spi.h"
 #include "ther_spi_w25x40cl.h"
 
-#define MODULE  "[W25X] "
+#define MODULE  "[THER W25X] "
 #define W25X_DEBUG
 
 #define CONFIG_W25X40CL
