@@ -53,6 +53,14 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 	if (port >= UART_NUM)
 		return -1;
 
+/*
+#if DMA_PM
+	P0SEL &= ~0x30;
+	P0DIR |= 0x30;
+	P0 &= ~0x30;
+#endif
+*/
+
 	u = &uart_info[port];
 
 	config.configured = TRUE;
