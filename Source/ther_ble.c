@@ -428,3 +428,17 @@ unsigned char ther_ble_init(uint8 task_id)
 
 	return 0;
 }
+
+void ther_ble_exit(void)
+{
+	struct ther_ble_info *bi = &ble_info;
+	unsigned char adv_val = FALSE;
+
+	if (bi->gap_role_state == GAPROLE_CONNECTED) {
+
+		GAPRole_TerminateConnection();
+	}
+
+	GAPRole_SetParameter( GAPROLE_ADVERT_ENABLED, sizeof( uint8 ), &adv_val );
+}
+

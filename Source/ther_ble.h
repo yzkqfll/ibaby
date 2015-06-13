@@ -41,6 +41,7 @@ struct ble_status_change_msg {
 };
 
 unsigned char ther_ble_init(uint8 task_id);
+void ther_ble_exit(void);
 
 void ble_start_advertise(void);
 unsigned short ble_get_gap_handle(void);
