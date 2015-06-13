@@ -26,12 +26,14 @@ enum {
 };
 
 void oled_display_init(void);
+void oled_display_exit(void);
 void oled_show_welcome(void);
 void oled_show_goodbye(void);
 void oled_show_first_picture(unsigned short time, unsigned char link,
 						unsigned char batt_level, unsigned short temp);
 void oled_update_first_picture(unsigned char type, unsigned short val);
-void oled_show_second_picture(void);
+void oled_show_second_picture(unsigned short time, unsigned char link,
+		unsigned char batt_level, unsigned short temp);
 void oled_clear_screen(void);
 void oled_power_on(void);
 void oled_power_off(void);
