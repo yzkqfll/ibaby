@@ -416,7 +416,7 @@ void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,
 }
 
 void oled_drv_write_block(unsigned char start_page, unsigned char end_page,
-		unsigned char start_col, unsigned char end_col, unsigned char *data)
+		unsigned char start_col, unsigned char end_col, const unsigned char *data)
 {
 	unsigned char page;
 	unsigned char col;
@@ -467,6 +467,11 @@ static void init_gpio(void)
 	P2DIR |= BV(VDD_EN_PIN);
 }
 
+static void reset_gpio(void)
+{
+
+}
+
 void oled_drv_init_device(void)
 {
 	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
@@ -504,9 +509,11 @@ void oled_drv_init_device(void)
 void oled_drv_init(void)
 {
 	init_gpio();
-
-	oled_drv_power_on();
-
-	oled_drv_init_device();
-
 }
+
+void oled_drv_exit(void)
+{
+	reset_gpio();
+	oled_drv_power_off();
+}
+
