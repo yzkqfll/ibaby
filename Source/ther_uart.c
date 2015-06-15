@@ -90,6 +90,14 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 
 	(void)HalUARTOpen(port, &config);
 
+	/* SDK will enable flow ctrl under power saving.
+	 * We disable it after SDK operation to
+	 * ensure the uart0 is working fine
+	 */
+#if defined(POWER_SAVING)
+	U0UCR &= ~0x40;
+#endif
+
 	return 0;
 }
 
