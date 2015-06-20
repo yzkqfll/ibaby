@@ -195,7 +195,7 @@ static void ble_gap_role_new_state(gaprole_States_t new_state)
 
 			item = linkDB_Find(bi->gap_handle);
 			if (!item) {
-				print(LOG_WRANING, MODULE "linkDB_Find() return NULL\r\n");
+				print(LOG_WARNING, MODULE "linkDB_Find() return NULL\r\n");
 				break;
 			}
 
