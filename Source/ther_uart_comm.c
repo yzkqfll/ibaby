@@ -23,6 +23,11 @@ static void msg_dispatch(unsigned char port, unsigned char *buf, unsigned char l
 {
 	uart_send(port, buf, len);
 
+	/*
+	 * add '\r\n' to send the data to uart immediately
+	 */
+//	uart_send(port, "\r\n", 2);
+
 	return;
 }
 
