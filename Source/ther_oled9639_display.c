@@ -13,12 +13,45 @@
 
 #define MODULE "[THER DISPLAY] "
 
+enum {
+
+	STATE_POWER_OFF,
+	STATE_VDD_ON,
+	STATE_DISPLAY_ON,
+
+	STATE_VCC_OFF,
+	STATE_VDD_OFF,
+};
+
+
+#define DISPLAY_PREPARE_TIME 20 /* ms */
+#define DISPLAY_DELAY_AFTER_VDD_ON 30 /* ms */
+#define DISPLAY_DELAY_AFTER_VCC_ON 100 /* ms */
+#define DISPLAY_DELAY_AFTER_VCC_OFF 100 /* ms */
+
 struct oled_display {
-	bool device_init;
+	uint8 task_id;
+
+	unsigned char state;
+
+	bool powering_off;
+
+	unsigned char picture;
+	unsigned short remain_ms;
+
+	/* first picture */
+	bool ble_link;
+	unsigned short temp;
+	unsigned short time;
+	unsigned char batt_level;
+
+	/* second picture */
+
+	void (*event_report)(unsigned char event, unsigned short param);
 };
 
 static struct oled_display display = {
-	.device_init = FALSE,
+	.state = STATE_POWER_OFF,
 };
 
 /*
@@ -133,7 +166,7 @@ static const unsigned char number_24x13[][39] = {
 };
 
 
-static void oled_show_time(bool show, unsigned short time)
+static void show_time(bool show, unsigned short time)
 {
 	unsigned char hour = time >> 8;
 	unsigned char minute = time & 0xFF;
@@ -154,7 +187,7 @@ static void oled_show_time(bool show, unsigned short time)
 /*
  * 277 => 27.7 du
  */
-static void oled_show_temp(bool show, unsigned short temp)
+static void show_temp(bool show, unsigned short temp)
 {
 	unsigned char ten_digit, single_digit, decimal;
 
@@ -178,7 +211,7 @@ static void oled_show_temp(bool show, unsigned short temp)
 
 }
 
-static void oled_show_dummy_temp(bool show)
+static void show_dummy_temp(bool show)
 {
 	if (show) {
 		oled_drv_write_block(2, 5, 10, 23, dummy_celsius_24x13);
@@ -194,7 +227,7 @@ static void oled_show_dummy_temp(bool show)
 	}
 }
 
-static void oled_show_batt(bool show, unsigned char level)
+static void show_batt(bool show, unsigned char level)
 {
 	if (show)
 		oled_drv_write_block(0, 2, 69, 89, battery_16_20[0]);
@@ -202,7 +235,7 @@ static void oled_show_batt(bool show, unsigned char level)
 		oled_drv_fill_block(0, 2, 69, 89, 0);
 }
 
-static void oled_show_bluetooth(bool show)
+static void show_bluetooth(bool show)
 {
 	if (show)
 		oled_drv_write_block(0, 2, 0, 10, bluetooth_16_10[0]);
@@ -219,25 +252,65 @@ void oled_test(void)
 	oled_drv_fill_block(4, MAX_PAGE, 0, MAX_COL, 0);
 }
 
-/*
- * used when picture switch
- *
- * so need to check <device init> ????
- */
-void oled_clear_screen(void)
+
+static void oled_display_draw_picture(struct oled_display *od)
+{
+	oled_drv_fill_block(0, MAX_PAGE, 0, MAX_COL, 0);
+
+	switch (od->picture) {
+	case OLED_PICTURE_WELCOME:
+		oled_drv_write_block(1, 4, 3, 93, welcome_24x90);
+		break;
+
+	case OLED_PICTURE_GOODBYE:
+		oled_drv_write_block(1, 4, 3, 93, goodbye_24x90);
+		break;
+
+	case OLED_PICTURE1:
+
+		show_time(TRUE, od->time);
+
+		if (od->ble_link == LINK_ON)
+			show_bluetooth(TRUE);
+		else
+			show_bluetooth(FALSE);
+
+		show_batt(TRUE, od->batt_level);
+
+		show_temp(TRUE, od->temp);
+
+		break;
+
+	case OLED_PICTURE2:
+		show_time(FALSE, od->time);
+
+		if (od->ble_link == LINK_ON)
+			show_bluetooth(TRUE);
+		else
+			show_bluetooth(FALSE);
+
+		show_batt(FALSE, od->batt_level);
+
+		show_temp(TRUE, od->temp);
+		break;
+
+	default:
+		print(LOG_WARNING, MODULE "unknown picture to shown!\r\n");
+		break;
+	}
+
+	oled_drv_display_on();
+}
+
+static void update_first_picture(unsigned char type, unsigned short val)
 {
 	struct oled_display *od = &display;
 
-	if (!od->device_init) {
-		oled_drv_init_device();
-		od->device_init = TRUE;
+	if (od->state != STATE_DISPLAY_ON) {
+		print(LOG_WARNING, MODULE "oled_update_first_picture(): err, state is %d\r\n", od->state);
+		return;
 	}
 
-	oled_drv_fill_block(0, MAX_PAGE, 0, MAX_COL, 0);
-}
-
-void oled_update_first_picture(unsigned char type, unsigned short val)
-{
 	switch (type) {
 	case OLED_CONTENT_TIME:
 		break;
@@ -249,12 +322,12 @@ void oled_update_first_picture(unsigned char type, unsigned short val)
 		break;
 
 	case OLED_CONTENT_TEMP:
-		oled_show_temp(TRUE, val);
+		show_temp(TRUE, val);
 
 		break;
 
 	case OLED_CONTENT_DUMMY_TEMP:
-		oled_show_dummy_temp(TRUE);
+		show_dummy_temp(TRUE);
 		break;
 
 	default:
@@ -262,100 +335,116 @@ void oled_update_first_picture(unsigned char type, unsigned short val)
 	}
 }
 
-void oled_show_first_picture(unsigned short time, unsigned char link,
-						unsigned char batt_level, unsigned short temp)
+static void update_seconed_picture(unsigned char type, unsigned short val)
+{
+}
+
+void oled_update_picture(unsigned char picture, unsigned char type, unsigned short val)
+{
+	if (picture == OLED_PICTURE1)
+		update_first_picture(type, val);
+	else if (picture == OLED_PICTURE2)
+		update_seconed_picture(type, val);
+}
+
+void oled_show_picture(struct display_param *param)
 {
 	struct oled_display *od = &display;
 
-	if (!od->device_init) {
-		oled_drv_init_device();
-		od->device_init = TRUE;
+	switch (param->picture) {
+	case OLED_PICTURE1:
+		od->batt_level = param->ble_link;
+		od->temp = param->temp;
+		od->time = param->time;
+		od->batt_level = param->batt_level;
+		break;
+
+	case OLED_PICTURE2:
+		break;
+
 	}
 
-	oled_show_time(TRUE, time);
-
-	if (link == LINK_ON)
-		oled_show_bluetooth(TRUE);
-	else
-		oled_show_bluetooth(FALSE);
-
-	oled_show_batt(TRUE, batt_level);
-
-//	oled_show_temp(TRUE, temp);
-
-	oled_drv_display_on();
+	od->picture = param->picture;
+	od->remain_ms = param->remain_ms;
+	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_PREPARE_TIME);
 }
 
-void oled_show_second_picture(unsigned short time, unsigned char link,
-		unsigned char batt_level, unsigned short temp)
+void oled_show_next_picture(unsigned short time_ms)
 {
 	struct oled_display *od = &display;
 
-	if (!od->device_init) {
-		oled_drv_init_device();
-		od->device_init = TRUE;
-	}
+	od->picture = (od->picture + 1) % OLED_PICTURE_MAX;
+	od->remain_ms = time_ms;
 
-	oled_show_time(TRUE, time);
-
-	if (link == LINK_ON)
-		oled_show_bluetooth(TRUE);
-	else
-		oled_show_bluetooth(FALSE);
-
-	oled_show_batt(TRUE, batt_level);
-
-	oled_show_temp(TRUE, temp);
-
-	oled_drv_display_on();
+	osal_stop_timerEx(od->task_id, TH_DISPLAY_EVT);
+	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_PREPARE_TIME);
 }
 
-void oled_show_welcome(void)
-{
-	struct oled_display *od = &display;
-
-	if (!od->device_init) {
-		oled_drv_init_device();
-		od->device_init = TRUE;
-	}
-
-	oled_drv_write_block(1, 4, 3, 93, welcome_24x90);
-
-	oled_drv_display_on();
-}
-
-void oled_show_goodbye(void)
-{
-	struct oled_display *od = &display;
-
-	if (!od->device_init) {
-		oled_drv_init_device();
-		od->device_init = TRUE;
-	}
-
-	oled_drv_write_block(1, 4, 3, 93, goodbye_24x90);
-
-	oled_drv_display_on();
-}
-
-void oled_power_on(void)
-{
-	oled_drv_power_on();
-}
-
-void oled_power_off(void)
+void oled_display_power_off(void)
 {
 	struct oled_display *od = &display;
 
 	oled_drv_display_off();
-	oled_drv_power_off();
+	oled_drv_power_off_vcc();
 
-	od->device_init = FALSE;
+	od->state = STATE_VCC_OFF;
+	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VCC_OFF);
 }
 
-void oled_display_init(void)
+void oled_display_state_machine(void)
 {
+	struct oled_display *od = &display;
+
+	switch (od->state) {
+	/*
+	 * Power On sequence
+	 */
+	case STATE_POWER_OFF:
+		oled_drv_power_on_vdd();
+
+		od->state = STATE_VDD_ON;
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VDD_ON);
+		break;
+
+	case STATE_VDD_ON:
+		oled_drv_init_device();
+		oled_drv_power_on_vcc();
+
+		od->state = STATE_DISPLAY_ON;
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VCC_ON);
+		break;
+
+	case STATE_DISPLAY_ON:
+
+		if (od->remain_ms == 0) {
+			od->event_report(OLED_EVENT_TIME_TO_END, od->picture);
+
+		} else {
+			oled_display_draw_picture(od);
+
+			osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, od->remain_ms);
+			od->event_report(OLED_EVENT_DISPLAY_ON, od->picture);
+			od->remain_ms = 0;
+		}
+
+		break;
+
+	case STATE_VCC_OFF:
+		oled_drv_power_off_vdd();
+
+		od->state = STATE_POWER_OFF;
+		break;
+	}
+}
+
+void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char event, unsigned short param))
+{
+	struct oled_display *od = &display;
+
 	print(LOG_INFO, MODULE "oled9639 display init\r\n");
+
+	od->task_id = task_id;
+	od->event_report = event_report;
 
 	oled_drv_init();
 }

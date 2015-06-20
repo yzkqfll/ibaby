@@ -385,16 +385,24 @@ void oled_drv_display_off(void)
 	set_display_onoff(DISPLAY_OFF);
 }
 
-void oled_drv_power_on(void)
+void oled_drv_power_on_vdd(void)
 {
-	set_vcc_power(VCC_POWER_ON);
 	set_vdd_power(VDD_POWER_ON);
 }
 
-void oled_drv_power_off(void)
+void oled_drv_power_off_vdd(void)
+{
+	set_vdd_power(VDD_POWER_OFF);
+}
+
+void oled_drv_power_on_vcc(void)
+{
+	set_vcc_power(VCC_POWER_ON);
+}
+
+void oled_drv_power_off_vcc(void)
 {
 	set_vcc_power(VCC_POWER_OFF);
-	set_vdd_power(VDD_POWER_OFF);
 }
 
 void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,
@@ -474,8 +482,6 @@ static void reset_gpio(void)
 
 void oled_drv_init_device(void)
 {
-	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
-
 	set_display_onoff(DISPLAY_OFF);
 
 	set_start_page(0);
@@ -509,11 +515,12 @@ void oled_drv_init_device(void)
 void oled_drv_init(void)
 {
 	init_gpio();
+
+	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
 }
 
 void oled_drv_exit(void)
 {
 	reset_gpio();
-	oled_drv_power_off();
 }
 

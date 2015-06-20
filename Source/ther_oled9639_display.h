@@ -3,13 +3,13 @@
 #define __THER_OLED9639_DISPLAY_H__
 
 enum {
-	OLED_DISPLAY_PICTURE1,
-	OLED_DISPLAY_PICTURE2,
-	OLED_DISPLAY_MAX_PICTURE,
+	OLED_PICTURE1,
+	OLED_PICTURE2,
+	OLED_PICTURE_MAX,
 
-	OLED_DISPLAY_OFF,
-	OLED_DISPLAY_WELCOME,
-	OLED_DISPLAY_GOODBYE,
+	OLED_PICTURE_NONE,
+	OLED_PICTURE_WELCOME,
+	OLED_PICTURE_GOODBYE,
 };
 
 enum {
@@ -25,18 +25,28 @@ enum {
 	OLED_CONTENT_DUMMY_TEMP,
 };
 
-void oled_display_init(void);
+enum {
+	OLED_EVENT_DISPLAY_ON,
+	OLED_EVENT_TIME_TO_END,
+};
+
+struct display_param {
+	unsigned char picture;
+	unsigned short remain_ms;
+
+	bool ble_link;
+	unsigned short temp;
+	unsigned short time;
+	unsigned char batt_level;
+};
+
+void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char event, unsigned short param));
 void oled_display_exit(void);
-void oled_show_welcome(void);
-void oled_show_goodbye(void);
-void oled_show_first_picture(unsigned short time, unsigned char link,
-						unsigned char batt_level, unsigned short temp);
-void oled_update_first_picture(unsigned char type, unsigned short val);
-void oled_show_second_picture(unsigned short time, unsigned char link,
-		unsigned char batt_level, unsigned short temp);
-void oled_clear_screen(void);
-void oled_power_on(void);
-void oled_power_off(void);
+void oled_display_state_machine(void);
+void oled_display_power_off(void);
+void oled_update_picture(unsigned char picture, unsigned char type, unsigned short val);
+void oled_show_picture(struct display_param *param);
+void oled_show_next_picture(unsigned short time_ms);
 
 #endif
 
