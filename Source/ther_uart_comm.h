@@ -7,7 +7,7 @@ void uart_comm_init(void);
 enum {
 	LOG_DBG = 1,
 	LOG_INFO,
-	LOG_WRANING,
+	LOG_WARNING,
 	LOG_ERR,
 	LOG_CRIT
 };
