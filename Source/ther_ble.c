@@ -23,7 +23,6 @@
 #include "battservice.h"
 
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
 
 #include "ther_ble.h"
 
@@ -362,7 +361,7 @@ unsigned char ther_ble_init(uint8 task_id)
 		GAPRole_SetParameter( GAPROLE_TIMEOUT_MULTIPLIER, sizeof( uint16 ), &desired_conn_timeout );
 	}
 
-	ble_set_adv_interval(2000);
+//	ble_set_adv_interval(2000);
 	if (0)
 	{
 		/*
