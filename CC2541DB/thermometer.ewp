@@ -1110,6 +1110,12 @@
       <name>$PROJ_DIR$\..\Source\ther_adc.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_at.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_at.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_ble.c</name>
     </file>
     <file>
@@ -1182,10 +1188,10 @@
       <name>$PROJ_DIR$\..\Source\ther_uart.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_uart_comm.c</name>
+      <name>$PROJ_DIR$\..\Source\ther_uart_drv.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_uart_comm.h</name>
+      <name>$PROJ_DIR$\..\Source\ther_uart_drv.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\thermometer.c</name>
