@@ -5,7 +5,6 @@
 #include "OSAL_Clock.h"
 
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
 
 #include "thermometer.h"
 #include "ther_oled9639_display.h"

@@ -3,7 +3,7 @@
 
 #include "hal_board.h"
 #include "hal_i2c.h"
-#include "ther_uart_comm.h"
+#include "ther_uart.h"
 
 #include "ther_oled9639_drv.h"
 
