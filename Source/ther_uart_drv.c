@@ -11,15 +11,9 @@
 
 #include "ther_uart_drv.h"
 
-
-#define UART_RX_BUF_LEN 128
-#define UART_TX_BUF_LEN 128
-
 struct ther_uart_drv {
-
 	unsigned char rx_buf[UART_RX_BUF_LEN];
-
-	void (*rx_handle)(unsigned char port, unsigned char *buf, unsigned char len);
+	void (*rx_handle)(unsigned char port, unsigned char *buf, unsigned short len);
 };
 
 /*
@@ -29,25 +23,47 @@ struct ther_uart_drv {
  */
 static struct ther_uart_drv uart_drv[UART_PORT_NR];
 
+int uart_drv_recv(int port, unsigned char *buf, unsigned short *len)
+{
+	unsigned short rx_buf_len;
+
+	rx_buf_len = Hal_UART_RxBufLen(port);
+	if (rx_buf_len == 0)
+		return 0;
+
+	if (rx_buf_len > *len)
+		rx_buf_len = *len;
+
+	*len = HalUARTRead(port, buf, rx_buf_len);
+
+	return *len;
+}
+
 static void uart_recv_isr(uint8 port, uint8 event)
 {
-	struct ther_uart_drv *ui = &uart_drv[port];
-	unsigned short len, len_read;
-	unsigned char *buf;
+	struct ther_uart_drv *ud = &uart_drv[port];
+	unsigned short len = UART_RX_BUF_LEN, len_read;
+	unsigned char *buf = ud->rx_buf;
 
-	len_read = uart_drv_recv(port, &buf, &len);
+	len_read = uart_drv_recv(port, buf, &len);
 
 	if (len_read)
-		ui->rx_handle(port, buf, len_read);
+		ud->rx_handle(port, buf, len_read);
 
 	return;
 }
 
+int uart_drv_send(int port, unsigned char *buf, unsigned short len)
+{
+
+	return HalUARTWrite(port, buf, len);
+}
+
 int uart_init(unsigned char port, unsigned char baud_rate,
-			void (*hook)(unsigned char port, unsigned char *buf, unsigned char len))
+			void (*hook)(unsigned char port, unsigned char *buf, unsigned short len))
 {
 	halUARTCfg_t config;
-	struct ther_uart_drv *u;
+	struct ther_uart_drv *ud;
 
 	if (port >= UART_PORT_NR)
 		return -1;
@@ -60,7 +76,7 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 #endif
 */
 
-	u = &uart_drv[port];
+	ud = &uart_drv[port];
 
 	config.configured = TRUE;
 	switch (baud_rate) {
@@ -93,39 +109,11 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 	config.intEnable = TRUE;
 	config.callBackFunc  = uart_recv_isr;
 
-	u->rx_handle = hook;
+	ud->rx_handle = hook;
 
 	(void)HalUARTOpen(port, &config);
 
 	return 0;
 }
 
-int uart_drv_recv(int port, unsigned char **rx_buf, unsigned short *rx_len)
-{
-	struct ther_uart_drv *ui;
-	unsigned short len, len_read;
-	unsigned char *buf;
 
-	ui = &uart_drv[port];
-	buf = ui->rx_buf;
-
-	len = Hal_UART_RxBufLen(port);
-	if (len == 0)
-		return 0;
-
-	if (len > UART_RX_BUF_LEN)
-		len = UART_RX_BUF_LEN;
-
-	len_read = HalUARTRead(port, buf, len);
-
-	*rx_buf = buf;
-	*rx_len = len_read;
-
-	return len_read;
-}
-
-int uart_drv_send(int port, unsigned char *buf, unsigned short len)
-{
-
-	return HalUARTWrite(port, buf, len);
-}

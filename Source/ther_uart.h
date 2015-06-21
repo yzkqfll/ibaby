@@ -14,6 +14,6 @@ enum {
 int print(unsigned char level, char *fmt, ...);
 
 void ther_uart_init(unsigned char port, unsigned char baudrate,
-		 void (*at_handle)(unsigned char *buf, unsigned char len, unsigned char **ret_buf, unsigned char *ret_len));
+		 void (*at_handle)(unsigned char *buf, unsigned short len, unsigned char *ret_buf, unsigned short *ret_len));
 #endif
 

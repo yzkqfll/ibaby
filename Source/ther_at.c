@@ -11,7 +11,7 @@
 
 #define AT_CMD "AT"
 
-void ther_at_handle(unsigned char *buf, unsigned char len, unsigned char **ret_buf, unsigned char *ret_len)
+void ther_at_handle(unsigned char *buf, unsigned short len, unsigned char *ret_buf, unsigned short *ret_len)
 {
 
 	if (memcmp(buf, AT_CMD, strlen(AT_CMD))) {
