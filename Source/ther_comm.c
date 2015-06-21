@@ -85,7 +85,7 @@ void ther_send_temp_notify(uint16 connect_handle, unsigned short temp)
 	notify.len = encap_temp_data(THER_NOTIFY_FLAG, temp, notify.value);
 //	notify.handle = THERMOMETER_IMEAS_VALUE_POS;
 
-	print(LOG_DBG, MODULE "send notification(temp %d)\r\n", temp);
+	print(LOG_DBG, MODULE "send notification(temp %d)\n", temp);
 
 	Thermometer_IMeasNotify( connect_handle, &notify);
 
@@ -99,7 +99,7 @@ void ther_send_temp_indicate(uint16 connect_handle, unsigned char task_id, unsig
 	indicate.len = encap_temp_data(THER_INDICATE_FLAG, temp, indicate.value);
 	indicate.handle = THERMOMETER_TEMP_VALUE_POS;
 
-	print(LOG_DBG, MODULE "send indication(temp %d)\r\n", temp);
+	print(LOG_DBG, MODULE "send indication(temp %d)\n", temp);
 
 	Thermometer_TempIndicate( connect_handle, &indicate, task_id);
 

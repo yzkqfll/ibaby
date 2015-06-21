@@ -73,7 +73,7 @@ static unsigned short ther_get_temp(unsigned char presision)
 	sensor_res = temp_cal_get_res_by_adc(presision, adc_val);
 	temp = temp_cal_get_temp_by_res(sensor_res);
 
-	print(LOG_DBG, MODULE "ch %d adc %d, Rsensor %f, temp %d\r\n",
+	print(LOG_DBG, MODULE "ch %d adc %d, Rsensor %f, temp %d\n",
 			channel, adc_val, sensor_res, temp);
 
 	return temp;
@@ -95,11 +95,11 @@ unsigned short ther_get_current_temp(void)
 	temp = ther_get_temp(t->presision_used);
 
 	if ((t->presision_used == LOW_PRESISION) && (temp > HIGH_PRESISION_TEMP_MIN + PRESISION_CHANGE_MARGIN)) {
-		print(LOG_INFO, MODULE "change to high presision\r\n");
+		print(LOG_INFO, MODULE "change to high presision\n");
 		t->presision_used = HIGH_PRESISION;
 
 	} else if ((t->presision_used == HIGH_PRESISION) && (temp < HIGH_PRESISION_TEMP_MIN - PRESISION_CHANGE_MARGIN)) {
-		print(LOG_INFO, MODULE "change to low presision\r\n");
+		print(LOG_INFO, MODULE "change to low presision\n");
 		t->presision_used = LOW_PRESISION;
 	}
 
@@ -113,7 +113,7 @@ void ther_temp_init(void)
 {
 	struct ther_temp *t = &ther_temp;
 
-	print(LOG_INFO, MODULE "temp init\r\n");
+	print(LOG_INFO, MODULE "temp init\n");
 
 	t->presision_used = LOW_PRESISION;
 

@@ -44,22 +44,22 @@ void ther_measure_button_time(void)
 			/*
 			 * ignore debounce of the button
 			 */
-			print(LOG_DBG, MODULE "button pressed %d ms, ignore it\r\n", bt->eclipse_ms);
+			print(LOG_DBG, MODULE "button pressed %d ms, ignore it\n", bt->eclipse_ms);
 			return;
 		}
 
 		msg = (struct button_msg *)osal_msg_allocate(sizeof(struct button_msg));
 		if (!msg) {
-			print(LOG_ERR, MODULE "fail to allocate <struct button_msg>\r\n");
+			print(LOG_ERR, MODULE "fail to allocate <struct button_msg>\n");
 			return;
 		}
 		msg->hdr.event = USER_BUTTON_EVENT;
 
 		if (bt->eclipse_ms > LONG_PRESS_TIME) {
-			print(LOG_DBG, MODULE "button pressed %d ms, long press\r\n", bt->eclipse_ms);
+			print(LOG_DBG, MODULE "button pressed %d ms, long press\n", bt->eclipse_ms);
 			msg->type = LONG_PRESS;
 		} else {
-			print(LOG_DBG, MODULE "button pressed %d ms, short press\r\n", bt->eclipse_ms);
+			print(LOG_DBG, MODULE "button pressed %d ms, short press\n", bt->eclipse_ms);
 			msg->type = SHORT_PRESS;
 		}
 
@@ -77,7 +77,7 @@ void ther_button_init(unsigned char task_id)
 {
 	struct ther_button *bt = &ther_button;
 
-	print(LOG_INFO, MODULE "button init\r\n");
+	print(LOG_INFO, MODULE "button init\n");
 
 	bt->task_id = task_id;
 

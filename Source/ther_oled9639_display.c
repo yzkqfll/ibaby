@@ -10,7 +10,7 @@
 #include "ther_oled9639_display.h"
 #include "ther_oled9639_drv.h"
 
-#define MODULE "[THER DISPLAY] "
+#define MODULE "[THER DISP] "
 
 enum {
 
@@ -294,7 +294,7 @@ static void oled_display_draw_picture(struct oled_display *od)
 		break;
 
 	default:
-		print(LOG_WARNING, MODULE "unknown picture to shown!\r\n");
+		print(LOG_WARNING, MODULE "unknown picture to shown!\n");
 		break;
 	}
 
@@ -306,7 +306,7 @@ static void update_first_picture(unsigned char type, unsigned short val)
 	struct oled_display *od = &display;
 
 	if (od->state != STATE_DISPLAY_ON) {
-		print(LOG_WARNING, MODULE "oled_update_first_picture(): err, state is %d\r\n", od->state);
+		print(LOG_WARNING, MODULE "oled_update_first_picture(): err, state is %d\n", od->state);
 		return;
 	}
 
@@ -440,7 +440,7 @@ void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char
 {
 	struct oled_display *od = &display;
 
-	print(LOG_INFO, MODULE "oled9639 display init\r\n");
+	print(LOG_INFO, MODULE "oled9639 display init\n");
 
 	od->task_id = task_id;
 	od->event_report = event_report;
@@ -450,7 +450,7 @@ void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char
 
 void oled_display_exit(void)
 {
-	print(LOG_INFO, MODULE "oled9639 display exit\r\n");
+	print(LOG_INFO, MODULE "oled9639 display exit\n");
 
 	oled_drv_exit();
 }

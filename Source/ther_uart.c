@@ -31,6 +31,10 @@ static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsign
 
 //	uart_drv_send(port, buf, len);
 
+//	uart_drv_send(port, "get at cmd", len);
+
+	return;
+
 	if (tu->data_handle)
 		tu->data_handle(buf, len, &ret_buf, &ret_len);
 
@@ -38,9 +42,9 @@ static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsign
 		uart_drv_send(port, ret_buf, ret_len);
 
 	/*
-	 * add '\r\n' to send the data to uart immediately
+	 * add '\n' to send the data to uart immediately
 	 */
-//	uart_send(port, "\r\n", 2);
+//	uart_send(port, "\n", 2);
 
 	return;
 }
@@ -78,7 +82,7 @@ void ther_uart_init(unsigned char port, unsigned char baudrate,
 
 	uart_init(port, baudrate, ther_uart_data_handle);
 
-//	print(LOG_INFO, MODULE "uart init ok\r\n");
+//	print(LOG_INFO, MODULE "uart init ok\n");
 
 	return;
 }

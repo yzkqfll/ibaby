@@ -141,7 +141,7 @@ static void send_cmd(unsigned char cmd)
 
 	cnt = HalI2CWrite(BUF_LEN, buf);
 	if (cnt != 2) {
-		print(LOG_DBG, MODULE "cmd: cnt %d, buf: 0x%x 0x%x\r\n", cnt, buf[0], buf[1]);
+		print(LOG_DBG, MODULE "cmd: cnt %d, buf: 0x%x 0x%x\n", cnt, buf[0], buf[1]);
 	}
 }
 
@@ -157,7 +157,7 @@ static void send_data(unsigned char data)
 	cnt = HalI2CWrite(BUF_LEN, buf);
 
 	if (cnt != 2) {
-		print(LOG_DBG, MODULE "data: cnt %d, buf: 0x%x 0x%x\r\n", cnt, buf[0], buf[1]);
+		print(LOG_DBG, MODULE "data: cnt %d, buf: 0x%x 0x%x\n", cnt, buf[0], buf[1]);
 	}
 }
 

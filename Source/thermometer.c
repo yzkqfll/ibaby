@@ -105,12 +105,12 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 {
 	switch (msg->type) {
 	case SHORT_PRESS:
-		print(LOG_DBG, MODULE "button pressed\r\n");
+		print(LOG_DBG, MODULE "button pressed\n");
 
 		if (ti->power_mode == PM_ACTIVE) {
 
 			if (ti->display_picture > OLED_PICTURE_NONE) {
-				print(LOG_DBG, MODULE "ignore button press when picture is %d\r\n", ti->display_picture);
+				print(LOG_DBG, MODULE "ignore button press when picture is %d\n", ti->display_picture);
 				break;
 			}
 
@@ -125,22 +125,22 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 			}
 
 		} else if (ti->power_mode == PM_3) {
-			print(LOG_DBG, MODULE "ignore short press, power down !!!\r\n");
+			print(LOG_DBG, MODULE "ignore short press, power down !!!\n");
 			ther_system_power_off_post(ti);
 		} else {
-			print(LOG_DBG, MODULE "unknown power mode\r\n");
+			print(LOG_DBG, MODULE "unknown power mode\n");
 		}
 
 		break;
 
 	case LONG_PRESS:
-		print(LOG_DBG, MODULE "button long pressed\r\n");
+		print(LOG_DBG, MODULE "button long pressed\n");
 
 		if (ti->power_mode == PM_ACTIVE) {
 			ther_system_power_off_pre(ti);
 
 		} else if (ti->power_mode == PM_3) {
-			print(LOG_DBG, MODULE "power up in long press button\r\n");
+			print(LOG_DBG, MODULE "power up in long press button\n");
 			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 			ti->power_mode = PM_ACTIVE;
 		}
@@ -148,7 +148,7 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 		break;
 
 	default:
-		print(LOG_WARNING, MODULE "unknow button press\r\n");
+		print(LOG_WARNING, MODULE "unknow button press\n");
 		break;
 	}
 
@@ -161,7 +161,7 @@ static void ther_handle_gatt_access_msg(struct ther_info *ti, struct ble_gatt_ac
 	switch (msg->type) {
 
 	case GATT_TEMP_IND_ENABLED:
-		print(LOG_INFO, MODULE "start temp indication\r\n");
+		print(LOG_INFO, MODULE "start temp indication\n");
 
 		ti->temp_indication_enable = TRUE;
 		ti->indication_interval = 5;
@@ -169,14 +169,14 @@ static void ther_handle_gatt_access_msg(struct ther_info *ti, struct ble_gatt_ac
 		break;
 
 	case GATT_TEMP_IND_DISABLED:
-		print(LOG_INFO, MODULE "stop temp indication\r\n");
+		print(LOG_INFO, MODULE "stop temp indication\n");
 
 		ti->temp_indication_enable = FALSE;
 
 		break;
 
 	case GATT_IMEAS_NOTI_ENABLED:
-		print(LOG_INFO, MODULE "start imeas notification\r\n");
+		print(LOG_INFO, MODULE "start imeas notification\n");
 
 		ti->temp_notification_enable = TRUE;
 		ti->notification_interval = 5;
@@ -184,23 +184,23 @@ static void ther_handle_gatt_access_msg(struct ther_info *ti, struct ble_gatt_ac
 		break;
 
 	case GATT_IMEAS_NOTI_DISABLED:
-		print(LOG_INFO, MODULE "stop imeas notification\r\n");
+		print(LOG_INFO, MODULE "stop imeas notification\n");
 		ti->temp_notification_enable = FALSE;
 
 		break;
 
 	case GATT_INTERVAL_IND_ENABLED:
-		print(LOG_INFO, MODULE "start interval indication\r\n");
+		print(LOG_INFO, MODULE "start interval indication\n");
 
 		break;
 
 	case GATT_INTERVAL_IND_DISABLED:
-		print(LOG_INFO, MODULE "stop interval indication\r\n");
+		print(LOG_INFO, MODULE "stop interval indication\n");
 
 		break;
 
 	case GATT_UNKNOWN:
-		print(LOG_INFO, MODULE "unknown gatt access type\r\n");
+		print(LOG_INFO, MODULE "unknown gatt access type\n");
 		break;
 	}
 
@@ -279,11 +279,11 @@ static void ther_device_init(struct ther_info *ti)
 {
 	/* uart init */
 	ther_uart_init(UART_PORT_0, UART_BAUD_RATE_115200, ther_at_handle);
-	print(LOG_INFO, "\r\n\r\n");
-	print(LOG_INFO, "--------------\r\n");
-	print(LOG_INFO, "  Firmware version %d.%d\r\n",
+	print(LOG_INFO, "\n\n");
+	print(LOG_INFO, "--------------\n");
+	print(LOG_INFO, "  Firmware version %d.%d\n",
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION);
-	print(LOG_INFO, "--------------\r\n");
+	print(LOG_INFO, "--------------\n");
 
 	/* button init */
 	ther_button_init(ti->task_id);
@@ -500,7 +500,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	if (events & TH_TEST_EVT) {
 //		oled_picture_inverse();
 
-//		print(LOG_DBG, MODULE "live\r\n");
+//		print(LOG_DBG, MODULE "live\n");
 
 //		oled_show_temp(TRUE, ti->current_temp);
 

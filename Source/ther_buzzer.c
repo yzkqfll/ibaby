@@ -129,7 +129,7 @@ void ther_buzzer_play_music(unsigned char music_book)
 {
 	struct ther_buzzer *b = &buzzer;
 
-//	print(LOG_DBG, MODULE "play music %d\r\n", music);
+//	print(LOG_DBG, MODULE "play music %d\n", music);
 
 	b->music_book = music_book;
 	b->cur_step = 0;
@@ -141,7 +141,7 @@ void ther_buzzer_stop_music(void)
 {
 	struct ther_buzzer *b = &buzzer;
 
-	print(LOG_DBG, MODULE "stop music %d\r\n");
+	print(LOG_DBG, MODULE "stop music %d\n");
 
 	if (b->cur_step) {
 		osal_stop_timerEx(b->task_id, TH_BUZZER_EVT);
@@ -178,7 +178,7 @@ void ther_buzzer_init(unsigned char task_id)
 {
 	struct ther_buzzer *b = &buzzer;
 
-	print(LOG_INFO, MODULE "buzzer init\r\n");
+	print(LOG_INFO, MODULE "buzzer init\n");
 
 	b->task_id = task_id;
 

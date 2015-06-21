@@ -177,11 +177,11 @@ static void ble_gap_role_new_state(gaprole_States_t new_state)
 	linkDBItem_t  *item;
 	struct ble_status_change_msg *msg;
 
-	print(LOG_INFO, MODULE "GAP: change to <%s>\r\n", gap_state_str[new_state]);
+	print(LOG_INFO, MODULE "GAP: change to <%s>\n", gap_state_str[new_state]);
 
 	msg = (struct ble_status_change_msg *)osal_msg_allocate(sizeof(struct ble_status_change_msg));
 	if (!msg) {
-		print(LOG_INFO, MODULE "fail to allocate <struct ble_status_change_msg>\r\n");
+		print(LOG_INFO, MODULE "fail to allocate <struct ble_status_change_msg>\n");
 		return;
 	}
 	msg->hdr.event = BLE_STATUS_CHANGE_EVENT;
@@ -194,16 +194,16 @@ static void ble_gap_role_new_state(gaprole_States_t new_state)
 
 			item = linkDB_Find(bi->gap_handle);
 			if (!item) {
-				print(LOG_WARNING, MODULE "linkDB_Find() return NULL\r\n");
+				print(LOG_WARNING, MODULE "linkDB_Find() return NULL\n");
 				break;
 			}
 
-	    	print(LOG_DBG, MODULE "peer addr %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+			print(LOG_DBG, MODULE "peer addr %02x:%02x:%02x:%02x:%02x:%02x\n",
 	    			item->addr[0], item->addr[1], item->addr[2],
 					item->addr[3], item->addr[4], item->addr[5]);
 
-	        if(osal_memcmp(item->addr, bi->last_connected_addr, B_ADDR_LEN )) {
-	        	print(LOG_DBG, MODULE "connect to last addr\r\n");
+			if(osal_memcmp(item->addr, bi->last_connected_addr, B_ADDR_LEN )) {
+				print(LOG_DBG, MODULE "connect to last addr\n");
 	        	bi->connect_to_last_addr = TRUE;
 	        } else {
 	        	osal_memcpy(bi->last_connected_addr, item->addr, B_ADDR_LEN );
@@ -242,7 +242,7 @@ static void ble_gatt_accessed(uint8 event)
 
 	msg = (struct ble_gatt_access_msg *)osal_msg_allocate(sizeof(struct ble_gatt_access_msg));
 	if (!msg) {
-		print(LOG_INFO, MODULE "fail to allocate <struct ble_msg>\r\n");
+		print(LOG_INFO, MODULE "fail to allocate <struct ble_msg>\n");
 		return;
 	}
 
@@ -322,7 +322,7 @@ unsigned char ther_ble_init(uint8 task_id)
 {
 	struct ther_ble_info *bi = &ble_info;
 
-	print(LOG_INFO, MODULE "ble init ...\r\n");
+	print(LOG_INFO, MODULE "ble init ...\n");
 
 	bi->task_id = task_id;
 

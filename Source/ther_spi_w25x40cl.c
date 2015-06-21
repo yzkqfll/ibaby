@@ -129,7 +129,7 @@ static uint32 w25x_npage_write(uint32 page_addr, const uint8 *buffer)
 	uint8 send_buffer[4];
 
 	if ((page_addr & 0xFF) != 0) {
-		print(LOG_ERR, MODULE "page addr must align to 256bytes,dead here!\r\n");
+		print(LOG_ERR, MODULE "page addr must align to 256bytes,dead here!\n");
 		while(1);
 	}
 
@@ -241,7 +241,7 @@ uint8 ther_spi_w25x_init(void)
 	ther_spi_send_then_recv(&cmd, 1, id_recv, 3);
 
 	if(id_recv[0] != MF_ID) {
-		print(LOG_INFO, MODULE "Manufacturers ID(%x) error!\r\n", id_recv[0]);
+		print(LOG_INFO, MODULE "Manufacturers ID(%x) error!\n", id_recv[0]);
 		return FL_EID;
 	}
 
@@ -255,9 +255,9 @@ uint8 ther_spi_w25x_init(void)
 	memory_type_capacity = (memory_type_capacity << 8) | id_recv[2];
 
 	if(memory_type_capacity == MTC_W25X40CL) {
-		print(LOG_INFO, MODULE "W25X40CL detection is ok\r\n");
+		print(LOG_INFO, MODULE "W25X40CL detection is ok\n");
 	} else {
-		print(LOG_INFO, MODULE "memory type(%x) capacity(%x) error!\r\n", id_recv[1], id_recv[2]);
+		print(LOG_INFO, MODULE "memory type(%x) capacity(%x) error!\n", id_recv[1], id_recv[2]);
 		return FL_ETYPE;
 	}
 
@@ -278,10 +278,10 @@ void ther_spi_w25x_test(void)
 	uint8 data_to_wr = 0x5a;
 	uint8 data_from_rd;
 
-	print(LOG_INFO, MODULE "start flash rd/wr test.\r\n");
+	print(LOG_INFO, MODULE "start flash rd/wr test.\n");
 
 	if(FL_EOK != w25x_flash_open()) {
-		print(LOG_ERR, MODULE "flash open failed!\r\n");
+		print(LOG_ERR, MODULE "flash open failed!\n");
 	}
 
 	w25x_sector_erase(0);
@@ -292,11 +292,11 @@ void ther_spi_w25x_test(void)
 		w25x_flash_read(i, &data_from_rd, 1);
 
 		if(data_from_rd != 0x5a) {
-			print(LOG_INFO, MODULE "flash test failed \r\n");
+			print(LOG_INFO, MODULE "flash test failed \n");
 		}
 	}
 
-	print(LOG_INFO, MODULE "finish flash rd/wr(%dB) test.\r\n", i);
+	print(LOG_INFO, MODULE "finish flash rd/wr(%dB) test.\n", i);
 }
 #endif
 
