@@ -10,7 +10,6 @@
 #include "OSAL.h"
 #include "hal_board.h"
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
 #include "ther_spi.h"
 #include "ther_spi_w25x40cl.h"
 

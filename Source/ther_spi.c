@@ -11,7 +11,6 @@
 #include "hal_board.h"
 
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
 
 #include "ther_spi.h"
 

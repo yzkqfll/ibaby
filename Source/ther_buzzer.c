@@ -7,7 +7,6 @@
 #include "hal_drivers.h"
 
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
 
 #include "hal_board.h"
 #include "ther_buzzer.h"
