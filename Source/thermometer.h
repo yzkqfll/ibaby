@@ -63,6 +63,40 @@ extern "C"
 #define TH_DISPLAY_EVT				0x0020
 #define TH_TEST_EVT					0x0800
 
+
+struct ther_info {
+	uint8 task_id;
+
+	unsigned char power_mode;
+
+	bool ble_connect;
+
+	/*
+	 * Display
+	 */
+	unsigned char display_picture;
+
+	/*
+	 * Indication
+	 */
+	bool temp_indication_enable;
+	unsigned char indication_interval; /* second */
+
+	/*
+	 * Notification
+	 */
+	bool temp_notification_enable;
+	unsigned char notification_interval; /* second */
+
+	/* temp */
+	unsigned char temp_measure_stage;
+	unsigned short temp_last_saved;
+	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
+	unsigned long temp_measure_interval;
+	bool has_history_temp;
+};
+extern struct ther_info ther_info;
+
 /*********************************************************************
  * MACROS
  */

@@ -23,7 +23,7 @@
 
 #include "config.h"
 #include "ther_uart.h"
-#include "ther_uart_comm.h"
+#include "ther_uart_drv.h"
 
 #include "ther_ble.h"
 
@@ -34,6 +34,7 @@
 #include "ther_oled9639_display.h"
 #include "ther_spi_w25x40cl.h"
 #include "ther_temp.h"
+#include "ther_at.h"
 
 #define MODULE "[THER] "
 
@@ -45,39 +46,7 @@ enum {
 	PM_3,
 };
 
-struct ther_info {
-	uint8 task_id;
-
-	unsigned char power_mode;
-
-	bool ble_connect;
-
-	/*
-	 * Display
-	 */
-	unsigned char display_picture;
-
-	/*
-	 * Indication
-	 */
-	bool temp_indication_enable;
-	unsigned char indication_interval; /* second */
-
-	/*
-	 * Notification
-	 */
-	bool temp_notification_enable;
-	unsigned char notification_interval; /* second */
-
-	/* temp */
-	unsigned char temp_measure_stage;
-	unsigned short temp_last_saved;
-	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
-	unsigned long temp_measure_interval;
-	bool has_history_temp;
-};
-
-static struct ther_info ther_info;
+struct ther_info ther_info;
 
 #define SEC_TO_MS(sec) ((sec) * 1000)
 
@@ -301,11 +270,10 @@ static void ther_display_event_report(unsigned char event, unsigned short param)
 
 }
 
-
 static void ther_device_init(struct ther_info *ti)
 {
 	/* uart init */
-	uart_comm_init();
+	ther_uart_init(UART_PORT_0, UART_BAUD_RATE_115200, ther_at_handle);
 	print(LOG_INFO, "\r\n\r\n");
 	print(LOG_INFO, "--------------\r\n");
 	print(LOG_INFO, "  Firmware version %d.%d\r\n",

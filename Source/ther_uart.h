@@ -2,21 +2,18 @@
 #ifndef __THER_UART_H__
 #define __THER_UART_H__
 
-int uart_init(unsigned char port, unsigned char baud_rate,
-			void (*hook)(unsigned char port, unsigned char *buf, unsigned char len));
 
-int uart_recv(int port, unsigned char **rx_buf, unsigned short *rx_len);
-int uart_send(int port, unsigned char *buf, unsigned short len);
-
-/*
- * Baudrate
- */
 enum {
-	UART_BAUD_RATE_9600,
-	UART_BAUD_RATE_19200,
-	UART_BAUD_RATE_38400,
-	UART_BAUD_RATE_115200,
+	LOG_DBG = 1,
+	LOG_INFO,
+	LOG_WARNING,
+	LOG_ERR,
+	LOG_CRIT
 };
 
+int print(unsigned char level, char *fmt, ...);
+
+void ther_uart_init(unsigned char port, unsigned char baudrate,
+		 void (*at_handle)(unsigned char *buf, unsigned char len, unsigned char **ret_buf, unsigned char *ret_len));
 #endif
 
