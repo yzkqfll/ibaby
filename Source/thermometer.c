@@ -109,6 +109,11 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 		if (ti->power_mode == PM_ACTIVE) {
 
+			if (ti->display_picture > OLED_PICTURE_NONE) {
+				print(LOG_DBG, MODULE "ignore button press when picture is %d\r\n", ti->display_picture);
+				break;
+			}
+
 			if (ti->display_picture == OLED_PICTURE_NONE) {
 				struct display_param param;
 
