@@ -1,6 +1,7 @@
 
 #include "Comdef.h"
 #include "OSAL.h"
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -11,12 +12,16 @@
 
 static unsigned char log_level = LOG_DBG;
 
-static unsigned char send_buf[UART_TX_BUF_LEN];
+static unsigned char print_buf[UART_TX_BUF_LEN];
 
 struct ther_uart {
 	unsigned char port;
+	char send_buf[UART_TX_BUF_LEN];
 
-	void (*data_handle)(unsigned char *buf, unsigned short len, unsigned char *ret_buf, unsigned short *ret_len);
+	unsigned char offset;
+	char cmd_parse_buf[UART_TX_BUF_LEN + 1]; /* we will add \0 at the end */
+
+	void (*data_handle)(char *buf, unsigned short len, char *ret_buf, unsigned short *ret_len);
 };
 struct ther_uart ther_uart[UART_PORT_NR];
 
@@ -25,14 +30,38 @@ struct ther_uart ther_uart[UART_PORT_NR];
 static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsigned short len)
 {
 	struct ther_uart *tu = &ther_uart[port];
-	unsigned char *ret_buf = send_buf;
-	unsigned short ret_len = 0;
+	char *ret_buf = tu->send_buf;
+	char *p, *end;
+	unsigned short ret_len = UART_TX_BUF_LEN;
+
+	if (tu->offset + len >= UART_TX_BUF_LEN) {
+		tu->offset = 0;
+		print(LOG_INFO, MODULE "overflow the cmd parse buffer\n");
+		return;
+	}
+
+	memcpy(&tu->cmd_parse_buf[tu->offset], buf, len);
+	tu->offset += len;
+	tu->cmd_parse_buf[tu->offset] = '\0';
+	p = strchr(tu->cmd_parse_buf, '\n');
+	if (!p)
+		return;
 
 	if (tu->data_handle)
-		tu->data_handle(buf, len, ret_buf, &ret_len);
+		tu->data_handle(tu->cmd_parse_buf, p - tu->cmd_parse_buf + 1, ret_buf, &ret_len);
 
-	if (ret_len)
-		uart_drv_send(port, ret_buf, ret_len);
+	if (ret_len) {
+		uart_drv_send(port, (unsigned char *)ret_buf, ret_len);
+	}
+
+	end = tu->cmd_parse_buf + tu->offset;
+	if (p + 1 < end) {
+		/* more data after *p */
+		strncpy(tu->cmd_parse_buf, p + 1, end - p);
+		tu->offset = end - p;
+	} else {
+		tu->offset = 0; /* err happened ?? */
+	}
 
 	/*
 	 * add '\n' to send the data to uart immediately
@@ -44,7 +73,6 @@ static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsign
 
 int print(unsigned char level, char *fmt, ...)
 {
-	struct ther_uart *tu = &ther_uart[PRINT_PORT];
 	va_list args;
 	int n;
 
@@ -52,11 +80,11 @@ int print(unsigned char level, char *fmt, ...)
 		return 0;
 
 	va_start(args, fmt);
-	n = vsprintf((unsigned char *)send_buf, fmt, args);
+	n = vsprintf((char *)print_buf, fmt, args);
 //	n = vsnprintf(print_buf, PRINT_BUF_LEN, fmt, args);
 	if (n > 100)
 		n = 100;
-	uart_drv_send(tu->port, (unsigned char *)send_buf, n);
+	uart_drv_send(UART_PORT_0, print_buf, n);
 	va_end(args);
 
 	return n;
@@ -66,14 +94,16 @@ int print(unsigned char level, char *fmt, ...)
  * only support one UART now
  */
 void ther_uart_init(unsigned char port, unsigned char baudrate,
-		 void (*data_handle)(unsigned char *buf, unsigned short len, unsigned char *ret_buf, unsigned short *ret_len))
+		 void (*data_handle)(char *buf, unsigned short len, char *ret_buf, unsigned short *ret_len))
 {
 	struct ther_uart *tu = &ther_uart[port];
+
+	memset(tu, 0, sizeof(struct ther_uart));
 
 	tu->port = port;
 	tu->data_handle = data_handle;
 
-	uart_init(port, baudrate, ther_uart_data_handle);
+	uart_drv_init(port, baudrate, ther_uart_data_handle);
 
 //	print(LOG_INFO, MODULE "uart init ok\n");
 

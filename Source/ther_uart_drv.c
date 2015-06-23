@@ -23,7 +23,7 @@ struct ther_uart_drv {
  */
 static struct ther_uart_drv uart_drv[UART_PORT_NR];
 
-int uart_drv_recv(int port, unsigned char *buf, unsigned short *len)
+int uart_drv_recv(int port, unsigned char *buf, unsigned short max_len)
 {
 	unsigned short rx_buf_len;
 
@@ -31,24 +31,25 @@ int uart_drv_recv(int port, unsigned char *buf, unsigned short *len)
 	if (rx_buf_len == 0)
 		return 0;
 
-	if (rx_buf_len > *len)
-		rx_buf_len = *len;
+	if (rx_buf_len > max_len)
+		rx_buf_len = max_len;
 
-	*len = HalUARTRead(port, buf, rx_buf_len);
-
-	return *len;
+	return HalUARTRead(port, buf, rx_buf_len);
 }
 
 static void uart_recv_isr(uint8 port, uint8 event)
 {
 	struct ther_uart_drv *ud = &uart_drv[port];
-	unsigned short len = UART_RX_BUF_LEN, len_read;
 	unsigned char *buf = ud->rx_buf;
+	unsigned short rx_len;
 
-	len_read = uart_drv_recv(port, buf, &len);
+/*	if (!(event & HAL_UART_RX_TIMEOUT))
+		return;*/
 
-	if (len_read)
-		ud->rx_handle(port, buf, len_read);
+	rx_len = uart_drv_recv(port, buf, UART_RX_BUF_LEN);
+
+	if (rx_len)
+		ud->rx_handle(port, buf, rx_len);
 
 	return;
 }
@@ -59,7 +60,7 @@ int uart_drv_send(int port, unsigned char *buf, unsigned short len)
 	return HalUARTWrite(port, buf, len);
 }
 
-int uart_init(unsigned char port, unsigned char baud_rate,
+int uart_drv_init(unsigned char port, unsigned char baud_rate,
 			void (*hook)(unsigned char port, unsigned char *buf, unsigned short len))
 {
 	halUARTCfg_t config;
@@ -112,6 +113,14 @@ int uart_init(unsigned char port, unsigned char baud_rate,
 	ud->rx_handle = hook;
 
 	(void)HalUARTOpen(port, &config);
+
+	/* SDK will enable flow ctrl under power saving.
+	 * We disable it after SDK operation to
+	 * ensure the uart0 is working fine
+	 */
+#if defined(POWER_SAVING)
+	U0UCR &= ~0x40;
+#endif
 
 	return 0;
 }

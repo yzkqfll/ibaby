@@ -2,10 +2,10 @@
 #ifndef __THER_UART_DRV_H__
 #define __THER_UART_DRV_H__
 
-int uart_init(unsigned char port, unsigned char baud_rate,
+int uart_drv_init(unsigned char port, unsigned char baud_rate,
 			void (*hook)(unsigned char port, unsigned char *buf, unsigned short len));
 
-int uart_drv_recv(int port, unsigned char *buf, unsigned short *len);
+int uart_drv_recv(int port, unsigned char *buf, unsigned short max_len);
 int uart_drv_send(int port, unsigned char *buf, unsigned short len);
 
 enum {
