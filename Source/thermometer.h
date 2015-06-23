@@ -63,6 +63,10 @@ extern "C"
 #define TH_DISPLAY_EVT				0x0020
 #define TH_TEST_EVT					0x0800
 
+enum {
+	NORMAL_MODE = 0,
+	CAL_MODE,
+};
 
 struct ther_info {
 	uint8 task_id;
@@ -70,6 +74,11 @@ struct ther_info {
 	unsigned char power_mode;
 
 	bool ble_connect;
+
+	/*
+	 * mode
+	 */
+	unsigned char mode;
 
 	/*
 	 * Display
@@ -89,7 +98,6 @@ struct ther_info {
 	unsigned char notification_interval; /* second */
 
 	/* temp */
-	bool temp_measure_allowed;
 	unsigned char temp_measure_stage;
 	unsigned short temp_last_saved;
 	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
@@ -97,6 +105,8 @@ struct ther_info {
 	bool has_history_temp;
 };
 extern struct ther_info ther_info;
+
+struct ther_info *get_ti(void);
 
 /*********************************************************************
  * MACROS

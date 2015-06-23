@@ -77,9 +77,14 @@ static void ther_system_power_on(struct ther_info *ti);
 static void ther_system_power_off_pre(struct ther_info *ti);
 static void ther_system_power_off_post(struct ther_info *ti);
 
+struct ther_info *get_ti(void)
+{
+	return &ther_info;
+}
+
 static void change_measure_timer(struct ther_info *ti, unsigned long new_interval)
 {
-	if (ti->temp_measure_allowed) {
+	if (ti->mode == NORMAL_MODE) {
 		osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
 
 		ti->temp_measure_interval = new_interval;
@@ -339,7 +344,6 @@ static void ther_system_power_on(struct ther_info *ti)
 	/*
 	 * start temp measurement
 	 */
-	ti->temp_measure_allowed = FALSE;
 	ti->temp_measure_interval = TEMP_MEASURE_INTERVAL;
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
@@ -437,14 +441,17 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_SETUP:
 			ther_temp_power_on();
 
-			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
-			ti->temp_measure_stage = TEMP_STAGE_MEASURE;
+			if (ti->mode == NORMAL_MODE) {
+				osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
+				ti->temp_measure_stage = TEMP_STAGE_MEASURE;
+			}
 			break;
 
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = ther_get_current_temp();
+			ti->temp_current = ther_auto_get_temp();
+			ther_temp_power_off();
 
 			if (ti->ble_connect) {
 				bool music = TRUE;
@@ -467,7 +474,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				oled_update_picture(OLED_PICTURE1, OLED_CONTENT_TEMP, ti->temp_current);
 			}
 
-			if (ti->temp_measure_allowed)
+			if (ti->mode == NORMAL_MODE)
 				osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
 			ti->temp_measure_stage = TEMP_STAGE_SETUP;
 			break;
@@ -508,11 +515,15 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 //		oled_show_temp(TRUE, ti->current_temp);
 
-		ther_spi_w25x_test();
+//		ther_spi_w25x_test();
 
-//		print(LOG_DBG, "live\n");
 
-		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 6000);
+//		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
+//		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));
+		ther_temp_power_on();
+		print(LOG_DBG, "temp %d\n", ther_get_temp(HIGH_PRESISION));
+
+//		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 
 		return (events ^ TH_TEST_EVT);
 	}
