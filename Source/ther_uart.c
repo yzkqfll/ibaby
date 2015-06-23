@@ -21,18 +21,18 @@ struct ther_uart {
 	unsigned char offset;
 	char cmd_parse_buf[UART_TX_BUF_LEN + 1]; /* we will add \0 at the end */
 
-	void (*data_handle)(char *buf, unsigned short len, char *ret_buf, unsigned short *ret_len);
+	void (*data_handle)(char *buf, unsigned char len, char *ret_buf, unsigned char *ret_len);
 };
 struct ther_uart ther_uart[UART_PORT_NR];
 
 #define PRINT_PORT UART_PORT_0
 
-static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsigned short len)
+static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsigned char len)
 {
 	struct ther_uart *tu = &ther_uart[port];
 	char *ret_buf = tu->send_buf;
 	char *p, *end;
-	unsigned short ret_len = UART_TX_BUF_LEN;
+	unsigned char ret_len = UART_TX_BUF_LEN;
 
 	if (tu->offset + len >= UART_TX_BUF_LEN) {
 		tu->offset = 0;
@@ -94,7 +94,7 @@ int print(unsigned char level, char *fmt, ...)
  * only support one UART now
  */
 void ther_uart_init(unsigned char port, unsigned char baudrate,
-		 void (*data_handle)(char *buf, unsigned short len, char *ret_buf, unsigned short *ret_len))
+		 void (*data_handle)(char *buf, unsigned char len, char *ret_buf, unsigned char *ret_len))
 {
 	struct ther_uart *tu = &ther_uart[port];
 
