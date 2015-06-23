@@ -6,8 +6,8 @@
 #include "hal_board.h"
 
 #include "ther_uart.h"
-
 #include "ther_adc.h"
+#include "ther_temp.h"
 #include "ther_temp_cal.h"
 
 #define MODULE "[THER TEMP] "
@@ -56,7 +56,7 @@ static void disable_ldo(void)
  *  channel 0(AIN0) is high presision
  *  channel 1(AIN1) is low presision
  */
-static unsigned short ther_get_temp(unsigned char presision)
+unsigned short ther_get_temp(unsigned char presision)
 {
 	unsigned short adc_val, temp;
 	float sensor_res;
@@ -70,13 +70,22 @@ static unsigned short ther_get_temp(unsigned char presision)
 
 	adc_val = read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
 
-	sensor_res = temp_cal_get_res_by_adc(presision, adc_val);
+	sensor_res = temp_cal_get_res_by_adc(channel, adc_val);
 	temp = temp_cal_get_temp_by_res(sensor_res);
 
-	print(LOG_DBG, MODULE "ch %d adc %d, Rsensor %f, temp %d\n",
+	print(LOG_DBG, MODULE "%s: ch %d adc %d, Rsensor %f, temp %d\n",
+			presision == HIGH_PRESISION ? "high presision" : "low presision",
 			channel, adc_val, sensor_res, temp);
 
 	return temp;
+}
+
+unsigned short ther_get_adc(unsigned char channel)
+{
+	if (channel < HAL_ADC_CHANNEL_2)
+		return read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+	else
+		return 0;
 }
 
 void ther_temp_power_on(void)
@@ -84,10 +93,15 @@ void ther_temp_power_on(void)
 	enable_ldo();
 }
 
+void ther_temp_power_off(void)
+{
+	disable_ldo();
+}
+
 /*
  * return value: 377 => 37.7 Celsius
  */
-unsigned short ther_get_current_temp(void)
+unsigned short ther_auto_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
 	unsigned short temp; /* 377 => 37.7 du */
@@ -95,15 +109,11 @@ unsigned short ther_get_current_temp(void)
 	temp = ther_get_temp(t->presision_used);
 
 	if ((t->presision_used == LOW_PRESISION) && (temp > HIGH_PRESISION_TEMP_MIN + PRESISION_CHANGE_MARGIN)) {
-		print(LOG_INFO, MODULE "change to high presision\n");
 		t->presision_used = HIGH_PRESISION;
 
 	} else if ((t->presision_used == HIGH_PRESISION) && (temp < HIGH_PRESISION_TEMP_MIN - PRESISION_CHANGE_MARGIN)) {
-		print(LOG_INFO, MODULE "change to low presision\n");
 		t->presision_used = LOW_PRESISION;
 	}
-
-	disable_ldo();
 
 	return temp;
 }
