@@ -89,6 +89,7 @@ struct ther_info {
 	unsigned char notification_interval; /* second */
 
 	/* temp */
+	bool temp_measure_allowed;
 	unsigned char temp_measure_stage;
 	unsigned short temp_last_saved;
 	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */

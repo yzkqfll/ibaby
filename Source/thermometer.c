@@ -79,10 +79,12 @@ static void ther_system_power_off_post(struct ther_info *ti);
 
 static void change_measure_timer(struct ther_info *ti, unsigned long new_interval)
 {
-	osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
+	if (ti->temp_measure_allowed) {
+		osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
 
-	ti->temp_measure_interval = new_interval;
-	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
+		ti->temp_measure_interval = new_interval;
+		osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
+	}
 }
 
 static void encap_first_picture_param(struct ther_info *ti, struct display_param *param)
@@ -337,6 +339,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	/*
 	 * start temp measurement
 	 */
+	ti->temp_measure_allowed = FALSE;
 	ti->temp_measure_interval = TEMP_MEASURE_INTERVAL;
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
@@ -464,7 +467,8 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				oled_update_picture(OLED_PICTURE1, OLED_CONTENT_TEMP, ti->temp_current);
 			}
 
-			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
+			if (ti->temp_measure_allowed)
+				osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
 			ti->temp_measure_stage = TEMP_STAGE_SETUP;
 			break;
 
@@ -505,6 +509,8 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 //		oled_show_temp(TRUE, ti->current_temp);
 
 		ther_spi_w25x_test();
+
+//		print(LOG_DBG, "live\n");
 
 		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 6000);
 
