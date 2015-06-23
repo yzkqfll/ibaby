@@ -13,7 +13,7 @@
 
 struct ther_uart_drv {
 	unsigned char rx_buf[UART_RX_BUF_LEN];
-	void (*rx_handle)(unsigned char port, unsigned char *buf, unsigned short len);
+	void (*rx_handle)(unsigned char port, unsigned char *buf, unsigned char len);
 };
 
 /*
@@ -61,7 +61,7 @@ int uart_drv_send(int port, unsigned char *buf, unsigned short len)
 }
 
 int uart_drv_init(unsigned char port, unsigned char baud_rate,
-			void (*hook)(unsigned char port, unsigned char *buf, unsigned short len))
+			void (*hook)(unsigned char port, unsigned char *buf, unsigned char len))
 {
 	halUARTCfg_t config;
 	struct ther_uart_drv *ud;

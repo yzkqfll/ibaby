@@ -3,7 +3,7 @@
 #define __THER_UART_DRV_H__
 
 int uart_drv_init(unsigned char port, unsigned char baud_rate,
-			void (*hook)(unsigned char port, unsigned char *buf, unsigned short len));
+			void (*hook)(unsigned char port, unsigned char *buf, unsigned char len));
 
 int uart_drv_recv(int port, unsigned char *buf, unsigned short max_len);
 int uart_drv_send(int port, unsigned char *buf, unsigned short len);
