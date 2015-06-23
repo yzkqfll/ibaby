@@ -306,7 +306,7 @@ static void update_first_picture(unsigned char type, unsigned short val)
 	struct oled_display *od = &display;
 
 	if (od->state != STATE_DISPLAY_ON) {
-		print(LOG_WARNING, MODULE "oled_update_first_picture(): err, state is %d\n", od->state);
+		print(LOG_WARNING, MODULE "update_first_picture(): err, state is %d\n", od->state);
 		return;
 	}
 
