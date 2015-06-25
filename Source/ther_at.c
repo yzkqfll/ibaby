@@ -9,6 +9,8 @@
 
 #include "ther_uart.h"
 #include "ther_temp.h"
+#include "ther_temp_cal.h"
+#include "ther_adc.h"
 #include "thermometer.h"
 
 #define MODULE "[THER AT] "
@@ -22,6 +24,8 @@
 #define AT_LDO_QUREY "AT+LDO?"
 #define AT_ADC0 "AT+ADC0?"
 #define AT_ADC1 "AT+ADC1?"
+#define AT_CH0RT "AT+CH0RT?"
+#define AT_CH1RT "AT+CH1RT?"
 #define AT_TEMP0 "AT+TEMP0?"
 #define AT_TEMP1 "AT+TEMP1?"
 
@@ -112,6 +116,19 @@ static unsigned char at_get_adc(char *ret_buf, unsigned char channel)
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
+static unsigned char at_get_ch_rt(char *ret_buf, unsigned char ch)
+{
+	unsigned short adc = ther_get_adc(ch);
+	float rt;
+
+	if (ch == HAL_ADC_CHANNEL_0)
+		rt = temp_cal_get_res_by_ch0(adc);
+	else
+		rt = temp_cal_get_res_by_ch1(adc);
+
+	return sprintf((char *)ret_buf, "+CH%dRT:%d, %f\n", ch, adc, rt);
+}
+
 void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)
 {
 	char *p;
@@ -166,11 +183,19 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 
 	/* AT+ADC0? */
 	} else if (strncmp((char *)cmd_buf, AT_ADC0, strlen(AT_ADC0)) == 0) {
-		*ret_len = at_get_adc(ret_buf, 0);
+		*ret_len = at_get_adc(ret_buf, HAL_ADC_CHANNEL_0);
 
 	/* AT+ADC1? */
 	} else if (strncmp((char *)cmd_buf, AT_ADC1, strlen(AT_ADC1)) == 0) {
-		*ret_len = at_get_adc(ret_buf, 1);
+		*ret_len = at_get_adc(ret_buf, HAL_ADC_CHANNEL_1);
+
+	/* AT+CH0RT? */
+	} else if (strncmp((char *)cmd_buf, AT_CH0RT, strlen(AT_CH0RT)) == 0) {
+		*ret_len = at_get_ch_rt(ret_buf, HAL_ADC_CHANNEL_0);
+
+	/* AT+CH1RT? */
+	} else if (strncmp((char *)cmd_buf, AT_CH1RT, strlen(AT_CH1RT)) == 0) {
+		*ret_len = at_get_ch_rt(ret_buf, HAL_ADC_CHANNEL_1);
 
 	/* AT+TEMP0? */
 	} else if (strncmp((char *)cmd_buf, AT_TEMP0, strlen(AT_TEMP0)) == 0) {

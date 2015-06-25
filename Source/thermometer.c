@@ -521,7 +521,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 //		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
 //		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));
 		ther_temp_power_on();
-		print(LOG_DBG, "temp %d\n", ther_get_temp(HIGH_PRESISION));
+		print(LOG_DBG, "temp %d\n", ther_get_temp(HAL_ADC_CHANNEL_0));
 
 //		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 

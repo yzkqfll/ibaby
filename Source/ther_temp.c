@@ -28,12 +28,12 @@
 #define ADC_LOW_PRECISION_PIN P0_1
 #define ADC_LOW_PRECISION_BIT 1
 
-#define PRESISION_CHANGE_MARGIN 20 /* 2 celsius */
-#define HIGH_PRESISION_TEMP_MIN 290
-#define HIGH_PRESISION_TEMP_MAX 450
+#define TEMP_MARGIN 20 /* 2 celsius */
+#define CH0_TEMP_MIN 290
+#define CH0_TEMP_MAX 450
 
 struct ther_temp {
-	unsigned char presision_used;
+	unsigned char channel;
 
 	/* save power */
 	unsigned short low_presision_pre_adc;
@@ -52,40 +52,44 @@ static void disable_ldo(void)
 	LDO_ENABLE_PIN = 0;
 }
 
+unsigned short ther_get_adc(unsigned char channel)
+{
+	unsigned short adc = 0;
+
+	if (channel < HAL_ADC_CHANNEL_2) {
+		P0_6 = 1;
+		adc = read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+		P0_6 = 0;
+	}
+
+	return adc;
+}
+
 /*
  *  channel 0(AIN0) is high presision
  *  channel 1(AIN1) is low presision
  */
-unsigned short ther_get_temp(unsigned char presision)
+unsigned short ther_get_temp(unsigned char ch)
 {
 	unsigned short adc_val, temp;
-	float sensor_res;
-	unsigned char channel;
+	float Rt;
 
-	if (presision == HIGH_PRESISION) {
-		channel = HAL_ADC_CHANNEL_0;
+	adc_val = ther_get_adc(ch);
+
+	if (ch == HAL_ADC_CHANNEL_0) {
+		Rt = temp_cal_get_res_by_ch0(adc_val);
+	} else if (ch == HAL_ADC_CHANNEL_1) {
+		Rt = temp_cal_get_res_by_ch1(adc_val);
 	} else {
-		channel = HAL_ADC_CHANNEL_1;
+		return 0;
 	}
 
-	adc_val = read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+	temp = temp_cal_get_temp_by_res(Rt);
 
-	sensor_res = temp_cal_get_res_by_adc(channel, adc_val);
-	temp = temp_cal_get_temp_by_res(sensor_res);
-
-	print(LOG_DBG, MODULE "%s: ch %d adc %d, Rsensor %f, temp %d\n",
-			presision == HIGH_PRESISION ? "high presision" : "low presision",
-			channel, adc_val, sensor_res, temp);
+	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %d\n",
+			ch, adc_val, Rt, temp);
 
 	return temp;
-}
-
-unsigned short ther_get_adc(unsigned char channel)
-{
-	if (channel < HAL_ADC_CHANNEL_2)
-		return read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
-	else
-		return 0;
 }
 
 void ther_temp_power_on(void)
@@ -104,15 +108,15 @@ void ther_temp_power_off(void)
 unsigned short ther_auto_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
-	unsigned short temp; /* 377 => 37.7 du */
+	unsigned short temp; /* 377 => 37.7 Celsius */
 
-	temp = ther_get_temp(t->presision_used);
+	temp = ther_get_temp(t->channel);
 
-	if ((t->presision_used == LOW_PRESISION) && (temp > HIGH_PRESISION_TEMP_MIN + PRESISION_CHANGE_MARGIN)) {
-		t->presision_used = HIGH_PRESISION;
+	if ((t->channel == HAL_ADC_CHANNEL_1) && (temp > CH0_TEMP_MIN + TEMP_MARGIN)) {
+		t->channel = HAL_ADC_CHANNEL_0;
 
-	} else if ((t->presision_used == HIGH_PRESISION) && (temp < HIGH_PRESISION_TEMP_MIN - PRESISION_CHANGE_MARGIN)) {
-		t->presision_used = LOW_PRESISION;
+	} else if ((t->channel == HAL_ADC_CHANNEL_0) && (temp < CH0_TEMP_MIN - TEMP_MARGIN)) {
+		t->channel = HAL_ADC_CHANNEL_1;
 	}
 
 	return temp;
@@ -125,7 +129,7 @@ void ther_temp_init(void)
 
 	print(LOG_INFO, MODULE "temp init\n");
 
-	t->presision_used = LOW_PRESISION;
+	t->channel = HAL_ADC_CHANNEL_1;
 
 	/*
 	 * init adc pins:
@@ -155,4 +159,9 @@ void ther_temp_init(void)
 
 	P0DIR &= ~(BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
 	P0INP |= BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT); /* 3-state */
+
+	/* For Jerry test: P0.6 */
+	P0DIR |= BV(6);
+	P0SEL &= ~BV(6);
+	P0_6 = 0;
 }
