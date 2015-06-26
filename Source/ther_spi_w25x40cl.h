@@ -2,6 +2,8 @@
 #ifndef __THER_SPI_FLASH_H__
 #define __THER_SPI_FLASH_H__
 
+#include "ther_mtd.h"
+
 #define FL_EOK      0
 #define FL_EID      1
 #define FL_ETYPE    2
@@ -20,7 +22,7 @@ struct flash_device {
 };
 
 //#define ther_spi_flash_init() ther_spi_w25x_init()
-uint8 ther_spi_w25x_init(void);
+uint8 ther_spi_w25x_init(struct mtd_info *m);
 void ther_spi_w25x_test(void);
 
 #endif

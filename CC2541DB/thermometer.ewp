@@ -1140,6 +1140,12 @@
       <name>$PROJ_DIR$\..\Source\ther_comm.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_mtd.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_mtd.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_oled9639_display.c</name>
     </file>
     <file>
@@ -1158,10 +1164,10 @@
       <name>$PROJ_DIR$\..\Source\ther_profile.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_spi.c</name>
+      <name>$PROJ_DIR$\..\Source\ther_spi_drv.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_spi.h</name>
+      <name>$PROJ_DIR$\..\Source\ther_spi_drv.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_spi_w25x40cl.c</name>
@@ -1174,12 +1180,6 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_temp.h</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_temp_cal.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_temp_cal.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_uart.c</name>

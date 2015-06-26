@@ -7,11 +7,15 @@ enum {
 	TEMP_STAGE_MEASURE,
 };
 
-unsigned short ther_auto_get_temp(void);
-unsigned short ther_get_temp(unsigned char presision);
-unsigned short ther_get_adc(unsigned char channel);
 void ther_temp_power_on(void);
 void ther_temp_power_off(void);
+
+unsigned short ther_get_temp(void);
+unsigned short ther_get_adc(unsigned char channel);
+bool ther_set_adc0_delta(unsigned short delta);
+float ther_get_ch_Rt(unsigned char ch);
+unsigned short ther_get_ch_temp(unsigned char presision);
+
 void ther_temp_init(void);
 
 #endif

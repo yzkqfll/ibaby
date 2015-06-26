@@ -1,6 +1,6 @@
 
-#ifndef __THER_SPI_H__
-#define __THER_SPI_H__
+#ifndef __THER_SPI_DRV_H__
+#define __THER_SPI_DRV_H__
 
 /**
  * SPI message structure

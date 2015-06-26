@@ -2,13 +2,13 @@
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_drivers.h"
+#include "math.h"
 
 #include "hal_board.h"
 
 #include "ther_uart.h"
 #include "ther_adc.h"
 #include "ther_temp.h"
-#include "ther_temp_cal.h"
 
 #define MODULE "[THER TEMP] "
 
@@ -35,6 +35,8 @@
 struct ther_temp {
 	unsigned char channel;
 
+	unsigned short adc0_delta;
+
 	/* save power */
 	unsigned short low_presision_pre_adc;
 	unsigned short low_presision_pre_temp;
@@ -52,6 +54,69 @@ static void disable_ldo(void)
 	LDO_ENABLE_PIN = 0;
 }
 
+
+static float calculate_Rt_by_adc0(unsigned short adc)
+{
+	float Rt = 0;
+
+	/*
+	 * From the Schematics
+	 *
+	 * 		(Vsensor * (Rt / (Rt + R9)) - Vsensor * (R50 / (R49 + R50))) * 5 = Vsensor * (adc / 8192)
+	 * 	=>	Rt = R9 / (1 / (adc / (5 * 8192) + R50 / (R49 + R50)) - 1)
+	 */
+	Rt = 56.0 / (1.0 / ((float)adc / 40960.0 + 56.0 / (56.0 + 76.8)) - 1);
+
+	return Rt;
+}
+
+static float calculate_Rt_by_adc1(unsigned short adc)
+{
+	float Rt = 0;
+
+	/*
+	 * From the Schematics
+	 *
+	 * 		R9 / Rt = Vr9 / Vsensor       R9 = 56K, Vr9 = (Vref / 8192) * (8192 - adc), Vsensor = (Vref / 8192) * adc
+	 * => 	Rt = 56K * adc / (8192 - adc)
+	 */
+	Rt = 56.0 * (float)adc / (8192.0 - (float)adc);
+
+	return Rt;
+}
+
+/*
+ * 377 => 37.7 celsius
+ */
+static unsigned short calculate_temp_by_Rt(float Rt)
+{
+	float temp;
+
+	/*
+	 * From Sensor SPEC:
+	 *
+	 * 3950.0 = ln(R25/Rt) / (1 / (25 + 273.15) - 1 / (temp + 273.15))
+	 * 	R25 is the resistance in 25 du
+	 *
+	 * temp = 1 / (1 / (25 + 273.15) - ln(Rt25/Rt) / 3950)) - 273.15
+	 */
+	temp = 1.0 / (1.0 / (25.0 + 273.15) - log(100.0 / Rt) / 3950) - 273.15;
+
+	temp = temp * 10.0;
+
+	return (unsigned short)temp;
+}
+
+void ther_temp_power_on(void)
+{
+	enable_ldo();
+}
+
+void ther_temp_power_off(void)
+{
+	disable_ldo();
+}
+
 unsigned short ther_get_adc(unsigned char channel)
 {
 	unsigned short adc = 0;
@@ -65,52 +130,79 @@ unsigned short ther_get_adc(unsigned char channel)
 	return adc;
 }
 
-/*
- *  channel 0(AIN0) is high presision
- *  channel 1(AIN1) is low presision
- */
-unsigned short ther_get_temp(unsigned char ch)
+bool ther_set_adc0_delta(unsigned short delta)
 {
-	unsigned short adc_val, temp;
-	float Rt;
+	struct ther_temp *t = &ther_temp;
 
-	adc_val = ther_get_adc(ch);
+	t->adc0_delta = delta;
 
+
+    return TRUE;
+}
+
+float ther_get_ch_Rt(unsigned char ch)
+{
+	unsigned short adc;
+	float Rt = 0;
+
+	adc = ther_get_adc(ch);
+
+	/* ADC -> Rt */
 	if (ch == HAL_ADC_CHANNEL_0) {
-		Rt = temp_cal_get_res_by_ch0(adc_val);
+		Rt = calculate_Rt_by_adc0(adc);
 	} else if (ch == HAL_ADC_CHANNEL_1) {
-		Rt = temp_cal_get_res_by_ch1(adc_val);
-	} else {
-		return 0;
+		Rt = calculate_Rt_by_adc1(adc);
 	}
 
-	temp = temp_cal_get_temp_by_res(Rt);
+	return Rt;
+}
 
-	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %d\n",
-			ch, adc_val, Rt, temp);
+unsigned short ther_get_ch_temp(unsigned char ch)
+{
+	unsigned short temp;
+	float Rt;
+
+	Rt = ther_get_ch_Rt(ch);
+
+	/* Rt -> temp */
+	temp = calculate_temp_by_Rt(Rt);
 
 	return temp;
 }
 
-void ther_temp_power_on(void)
+static unsigned short ther_get_ch_temp_print(unsigned char ch)
 {
-	enable_ldo();
-}
+	unsigned short adc, temp;
+	float Rt;
 
-void ther_temp_power_off(void)
-{
-	disable_ldo();
+	adc = ther_get_adc(ch);
+
+	/* ADC -> Rt */
+	if (ch == HAL_ADC_CHANNEL_0) {
+		Rt = calculate_Rt_by_adc0(adc);
+	} else if (ch == HAL_ADC_CHANNEL_1) {
+		Rt = calculate_Rt_by_adc1(adc);
+	}
+
+	/* Rt -> temp */
+	temp = calculate_temp_by_Rt(Rt);
+
+	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %d\n",
+			ch, adc, Rt, temp);
+
+	return temp;
 }
 
 /*
  * return value: 377 => 37.7 Celsius
  */
-unsigned short ther_auto_get_temp(void)
+unsigned short ther_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
 	unsigned short temp; /* 377 => 37.7 Celsius */
 
-	temp = ther_get_temp(t->channel);
+	t->channel = HAL_ADC_CHANNEL_0;
+	temp = ther_get_ch_temp_print(t->channel);
 
 	if ((t->channel == HAL_ADC_CHANNEL_1) && (temp > CH0_TEMP_MIN + TEMP_MARGIN)) {
 		t->channel = HAL_ADC_CHANNEL_0;

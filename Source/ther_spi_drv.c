@@ -12,7 +12,7 @@
 
 #include "ther_uart.h"
 
-#include "ther_spi.h"
+#include "ther_spi_drv.h"
 
 #define MODULE "[SPI] "
 

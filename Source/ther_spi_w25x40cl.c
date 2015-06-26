@@ -10,8 +10,9 @@
 #include "OSAL.h"
 #include "hal_board.h"
 #include "ther_uart.h"
-#include "ther_spi.h"
+#include "ther_spi_drv.h"
 #include "ther_spi_w25x40cl.h"
+
 
 #define MODULE  "[THER W25X] "
 #define W25X_DEBUG
@@ -226,7 +227,7 @@ static uint32 w25x_flash_write(int32 pos, const void* buffer, uint32 size)
 	return size;
 }
 
-uint8 ther_spi_w25x_init(void)
+uint8 ther_spi_w25x_init(struct mtd_info *m)
 {
 	struct flash_device *fd = &flash_dev;
 	uint8 cmd;

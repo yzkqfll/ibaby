@@ -32,7 +32,7 @@
 #include "ther_button.h"
 #include "ther_buzzer.h"
 #include "ther_oled9639_display.h"
-#include "ther_spi_w25x40cl.h"
+#include "ther_mtd.h"
 #include "ther_temp.h"
 #include "ther_at.h"
 
@@ -301,8 +301,8 @@ static void ther_device_init(struct ther_info *ti)
 	/* oled display init */
 	oled_display_init(ti->task_id, ther_display_event_report);
 
-	/* spi flash */
-	ther_spi_w25x_init();
+	/* mtd */
+	ther_mtd_init();
 
 	/* temp init */
 	ther_temp_init();
@@ -450,7 +450,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = ther_auto_get_temp();
+			ti->temp_current = ther_get_temp();
 			ther_temp_power_off();
 
 			if (ti->ble_connect) {
@@ -520,8 +520,6 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 //		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
 //		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));
-		ther_temp_power_on();
-		print(LOG_DBG, "temp %d\n", ther_get_temp(HAL_ADC_CHANNEL_0));
 
 //		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 

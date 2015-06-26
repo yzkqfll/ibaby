@@ -4,12 +4,12 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "hal_board.h"
 
 #include "ther_uart.h"
 #include "ther_temp.h"
-#include "ther_temp_cal.h"
 #include "ther_adc.h"
 #include "thermometer.h"
 
@@ -19,15 +19,18 @@
 
 #define AT_CMD "AT"
 #define AT_MODE "AT+MODE="
-#define AT_MODE_QUREY "AT+MODE?"
+#define AT_MODE_Q "AT+MODE"
 #define AT_LDO "AT+LDO="
-#define AT_LDO_QUREY "AT+LDO?"
-#define AT_ADC0 "AT+ADC0?"
-#define AT_ADC1 "AT+ADC1?"
-#define AT_CH0RT "AT+CH0RT?"
-#define AT_CH1RT "AT+CH1RT?"
-#define AT_TEMP0 "AT+TEMP0?"
-#define AT_TEMP1 "AT+TEMP1?"
+#define AT_LDO_Q "AT+LDO"
+#define AT_ADC0 "AT+ADC0"
+#define AT_ADC1 "AT+ADC1"
+#define AT_CH0RT "AT+CH0RT"
+#define AT_CH1RT "AT+CH1RT"
+#define AT_TEMP0 "AT+CH0TEMP"
+#define AT_TEMP1 "AT+CH1TEMP"
+
+#define AT_ADC0_DELTA "AT+ADC0DELTA="
+#define AT_ADC0_DELTA_Q "AT+ADC0DELTA"
 
 static unsigned char at_enter_cal_mode(char *ret_buf)
 {
@@ -44,7 +47,7 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 	 * stop temp measurement
 	 */
 	osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
-	ther_temp_power_off();
+	ther_temp_power_on();
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 
 //	print(LOG_DBG, MODULE "enter cal mode\n");
@@ -116,17 +119,34 @@ static unsigned char at_get_adc(char *ret_buf, unsigned char channel)
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
-static unsigned char at_get_ch_rt(char *ret_buf, unsigned char ch)
+static unsigned char at_get_ch_Rt(char *ret_buf, unsigned char ch)
 {
-	unsigned short adc = ther_get_adc(ch);
-	float rt;
+	float Rt;
 
-	if (ch == HAL_ADC_CHANNEL_0)
-		rt = temp_cal_get_res_by_ch0(adc);
-	else
-		rt = temp_cal_get_res_by_ch1(adc);
+	Rt = ther_get_ch_Rt(ch);
 
-	return sprintf((char *)ret_buf, "+CH%dRT:%d, %f\n", ch, adc, rt);
+	return sprintf((char *)ret_buf, "+CH%dRT:%f\n", ch, Rt);
+}
+
+static unsigned char at_get_ch_temp(char *ret_buf, unsigned char ch)
+{
+	unsigned short temp;
+
+	temp = ther_get_ch_temp(ch);
+
+	return sprintf((char *)ret_buf, "+CH%dTEMP:%d\n", ch, temp);
+}
+
+static unsigned char at_set_adc0_delta(char *ret_buf, unsigned short delta)
+{
+	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static unsigned char at_get_adc0_delta(char *ret_buf)
+{
+	unsigned short delta = 0;
+
+	return sprintf((char *)ret_buf, "+CH0 ADC DELTA:%d\n", delta);
 }
 
 void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)
@@ -166,8 +186,8 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 			*ret_len = sprintf((char *)ret_buf, "%s\n", "+MODE:UNKNOWN");
 		}
 
-	/* AT+MODE? */
-	} else if (strncmp((char *)cmd_buf, AT_MODE_QUREY, strlen(AT_MODE_QUREY)) == 0) {
+	/* AT+MODE */
+	} else if (strcmp((char *)cmd_buf, AT_MODE_Q) == 0) {
 		*ret_len = at_get_mode(ret_buf);
 
 	/* AT+LDO=x */
@@ -181,30 +201,74 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 			*ret_len = sprintf((char *)ret_buf, "%s\n", "+LDO:UNKNOWN");
 		}
 
-	/* AT+ADC0? */
-	} else if (strncmp((char *)cmd_buf, AT_ADC0, strlen(AT_ADC0)) == 0) {
+	/* AT+ADC0 */
+	} else if (strcmp((char *)cmd_buf, AT_ADC0) == 0) {
 		*ret_len = at_get_adc(ret_buf, HAL_ADC_CHANNEL_0);
 
-	/* AT+ADC1? */
-	} else if (strncmp((char *)cmd_buf, AT_ADC1, strlen(AT_ADC1)) == 0) {
+	/* AT+ADC1 */
+	} else if (strcmp((char *)cmd_buf, AT_ADC1) == 0) {
 		*ret_len = at_get_adc(ret_buf, HAL_ADC_CHANNEL_1);
 
-	/* AT+CH0RT? */
-	} else if (strncmp((char *)cmd_buf, AT_CH0RT, strlen(AT_CH0RT)) == 0) {
-		*ret_len = at_get_ch_rt(ret_buf, HAL_ADC_CHANNEL_0);
+	/* AT+CH0RT */
+	} else if (strcmp((char *)cmd_buf, AT_CH0RT) == 0) {
+		*ret_len = at_get_ch_Rt(ret_buf, HAL_ADC_CHANNEL_0);
 
-	/* AT+CH1RT? */
-	} else if (strncmp((char *)cmd_buf, AT_CH1RT, strlen(AT_CH1RT)) == 0) {
-		*ret_len = at_get_ch_rt(ret_buf, HAL_ADC_CHANNEL_1);
+	/* AT+CH1RT */
+	} else if (strcmp((char *)cmd_buf, AT_CH1RT) == 0) {
+		*ret_len = at_get_ch_Rt(ret_buf, HAL_ADC_CHANNEL_1);
 
-	/* AT+TEMP0? */
-	} else if (strncmp((char *)cmd_buf, AT_TEMP0, strlen(AT_TEMP0)) == 0) {
+	/* AT+TEMP0 */
+	} else if (strcmp((char *)cmd_buf, AT_TEMP0) == 0) {
+		*ret_len = at_get_ch_temp(ret_buf, HAL_ADC_CHANNEL_0);
 
-	/* AT+TEMP1? */
-	} else if (strncmp((char *)cmd_buf, AT_TEMP1, strlen(AT_TEMP1)) == 0) {
+	/* AT+TEMP1 */
+	} else if (strcmp((char *)cmd_buf, AT_TEMP1) == 0) {
+		*ret_len = at_get_ch_temp(ret_buf, HAL_ADC_CHANNEL_1);
+
+	/* AT+ADC0DELTA=x */
+	} else if (strncmp((char *)cmd_buf, AT_ADC0_DELTA, strlen(AT_ADC0_DELTA)) == 0) {
+		unsigned short delta;
+
+		p = cmd_buf + strlen(AT_ADC0_DELTA);
+		delta =  atoi(p);
+
+		*ret_len = at_set_adc0_delta(ret_buf, delta);
+
+	/* AT+ADC0DELTA */
+	} else if (strcmp((char *)cmd_buf, AT_ADC0_DELTA_Q) == 0) {
+		*ret_len = at_get_adc0_delta(ret_buf);
 
 	} else {
-		*ret_len = sprintf((char *)ret_buf, "%s\n", "Unknown AT cmd");
+		print(LOG_INFO, "\n");
+		print(LOG_INFO, "-----------------------\n");
+		print(LOG_INFO, "  AT command Help\n");
+		print(LOG_INFO, "-----------------------\n");
+
+		print(LOG_INFO, "    AT\n");
+
+		print(LOG_INFO, "    AT+MODE=[1 | 0]\n");
+		print(LOG_INFO, "    AT+MODE\n");
+		print(LOG_INFO, "\n");
+
+		print(LOG_INFO, "    AT+LDO=[1 | 0]\n");
+		print(LOG_INFO, "\n");
+
+		print(LOG_INFO, "    AT+ADC0\n");
+		print(LOG_INFO, "    AT+ADC1\n");
+		print(LOG_INFO, "\n");
+
+		print(LOG_INFO, "    AT+CH0RT\n");
+		print(LOG_INFO, "    AT+CH1RT\n");
+		print(LOG_INFO, "\n");
+
+		print(LOG_INFO, "    AT+CH0TEMP\n");
+		print(LOG_INFO, "    AT+CH1TEMP\n");
+		print(LOG_INFO, "\n");
+
+		print(LOG_INFO, "    AT+ADC0DELTA=x\n");
+		print(LOG_INFO, "    AT+ADC0DELTA\n");
+
+		print(LOG_INFO, "\n");
 	}
 
 	return;
