@@ -82,10 +82,11 @@ int print(unsigned char level, char *fmt, ...)
 	va_start(args, fmt);
 	n = vsprintf((char *)print_buf, fmt, args);
 //	n = vsnprintf(print_buf, PRINT_BUF_LEN, fmt, args);
-	if (n > 100)
-		n = 100;
-	uart_drv_send(UART_PORT_0, print_buf, n);
+//	if (n > 100)
+//		n = 100;
 	va_end(args);
+
+	uart_drv_send(UART_PORT_0, print_buf, n);
 
 	return n;
 }

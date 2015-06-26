@@ -35,7 +35,10 @@
 struct ther_temp {
 	unsigned char channel;
 
-	unsigned short adc0_delta;
+	short adc0_delta;
+
+	float B_delta;
+	float R25_delta;
 
 	/* save power */
 	unsigned short low_presision_pre_adc;
@@ -53,7 +56,6 @@ static void disable_ldo(void)
 {
 	LDO_ENABLE_PIN = 0;
 }
-
 
 static float calculate_Rt_by_adc0(unsigned short adc)
 {
@@ -88,9 +90,11 @@ static float calculate_Rt_by_adc1(unsigned short adc)
 /*
  * 377 => 37.7 celsius
  */
-static unsigned short calculate_temp_by_Rt(float Rt)
+static unsigned short calculate_temp_by_Rt(float Rt, float B_delta, float R25_delta)
 {
 	float temp;
+	float B = 3950 + B_delta;
+	float R25 = 100.0 + R25_delta;
 
 	/*
 	 * From Sensor SPEC:
@@ -100,7 +104,8 @@ static unsigned short calculate_temp_by_Rt(float Rt)
 	 *
 	 * temp = 1 / (1 / (25 + 273.15) - ln(Rt25/Rt) / 3950)) - 273.15
 	 */
-	temp = 1.0 / (1.0 / (25.0 + 273.15) - log(100.0 / Rt) / 3950) - 273.15;
+	temp = 1.0 / (1.0 / (25.0 + 273.15) - log(R25 / Rt) / B) - 273.15;
+	temp += 0.05;
 
 	temp = temp * 10.0;
 
@@ -119,28 +124,65 @@ void ther_temp_power_off(void)
 
 unsigned short ther_get_adc(unsigned char channel)
 {
+	struct ther_temp *t = &ther_temp;
 	unsigned short adc = 0;
 
 	if (channel < HAL_ADC_CHANNEL_2) {
 		P0_6 = 1;
 		adc = read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
 		P0_6 = 0;
+
+		if (channel == HAL_ADC_CHANNEL_0)
+			adc += t->adc0_delta;
 	}
 
 	return adc;
 }
 
-bool ther_set_adc0_delta(unsigned short delta)
+void ther_set_adc0_delta(short delta)
 {
 	struct ther_temp *t = &ther_temp;
 
 	t->adc0_delta = delta;
-
-
-    return TRUE;
 }
 
-float ther_get_ch_Rt(unsigned char ch)
+short ther_get_adc0_delta(void)
+{
+	struct ther_temp *t = &ther_temp;
+
+	return t->adc0_delta;
+}
+
+void ther_set_B_delta(float delta)
+{
+	struct ther_temp *t = &ther_temp;
+
+	t->B_delta = delta;
+}
+
+float ther_get_B_delta(void)
+{
+	struct ther_temp *t = &ther_temp;
+
+	return t->B_delta;
+}
+
+void ther_set_R25_delta(float delta)
+{
+	struct ther_temp *t = &ther_temp;
+
+	t->R25_delta = delta;
+}
+
+float ther_get_R25_delta(void)
+{
+	struct ther_temp *t = &ther_temp;
+
+	return t->R25_delta;
+}
+
+
+float ther_get_Rt(unsigned char ch)
 {
 	unsigned short adc;
 	float Rt = 0;
@@ -159,19 +201,21 @@ float ther_get_ch_Rt(unsigned char ch)
 
 unsigned short ther_get_ch_temp(unsigned char ch)
 {
+	struct ther_temp *t = &ther_temp;
 	unsigned short temp;
 	float Rt;
 
-	Rt = ther_get_ch_Rt(ch);
+	Rt = ther_get_Rt(ch);
 
 	/* Rt -> temp */
-	temp = calculate_temp_by_Rt(Rt);
+	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
 	return temp;
 }
 
 static unsigned short ther_get_ch_temp_print(unsigned char ch)
 {
+	struct ther_temp *t = &ther_temp;
 	unsigned short adc, temp;
 	float Rt;
 
@@ -185,7 +229,7 @@ static unsigned short ther_get_ch_temp_print(unsigned char ch)
 	}
 
 	/* Rt -> temp */
-	temp = calculate_temp_by_Rt(Rt);
+	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
 	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %d\n",
 			ch, adc, Rt, temp);
@@ -213,7 +257,6 @@ unsigned short ther_get_temp(void)
 
 	return temp;
 }
-
 
 void ther_temp_init(void)
 {

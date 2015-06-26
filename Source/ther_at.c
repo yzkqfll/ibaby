@@ -32,6 +32,11 @@
 #define AT_ADC0_DELTA "AT+ADC0DELTA="
 #define AT_ADC0_DELTA_Q "AT+ADC0DELTA"
 
+#define AT_B_DELTA "AT+BDELTA="
+#define AT_B_DELTA_Q "AT+BDELTA"
+#define AT_R25_DELTA "AT+R25_DELTA="
+#define AT_R25_DELTA_Q "AT+R25_DELTA"
+
 static unsigned char at_enter_cal_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
@@ -114,8 +119,6 @@ static unsigned char at_get_adc(char *ret_buf, unsigned char channel)
 {
 	unsigned short adc = ther_get_adc(channel);
 
-//	print(LOG_DBG, "adc %d: %d\n", channel, adc);
-
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
@@ -123,7 +126,7 @@ static unsigned char at_get_ch_Rt(char *ret_buf, unsigned char ch)
 {
 	float Rt;
 
-	Rt = ther_get_ch_Rt(ch);
+	Rt = ther_get_Rt(ch);
 
 	return sprintf((char *)ret_buf, "+CH%dRT:%f\n", ch, Rt);
 }
@@ -137,16 +140,80 @@ static unsigned char at_get_ch_temp(char *ret_buf, unsigned char ch)
 	return sprintf((char *)ret_buf, "+CH%dTEMP:%d\n", ch, temp);
 }
 
-static unsigned char at_set_adc0_delta(char *ret_buf, unsigned short delta)
+static unsigned char at_set_adc0_delta(char *ret_buf, short delta)
 {
+	ther_set_adc0_delta(delta);
+
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
 static unsigned char at_get_adc0_delta(char *ret_buf)
 {
-	unsigned short delta = 0;
+	unsigned short delta = ther_get_adc0_delta();
 
 	return sprintf((char *)ret_buf, "+CH0 ADC DELTA:%d\n", delta);
+}
+
+static unsigned char at_set_B_delta(char *ret_buf, float delta)
+{
+	ther_set_B_delta(delta);
+
+	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static unsigned char at_get_B_delta(char *ret_buf)
+{
+	float delta = ther_get_B_delta();
+
+	return sprintf((char *)ret_buf, "+BDELTA:%f\n", delta);
+}
+
+static unsigned char at_set_R25_delta(char *ret_buf, float delta)
+{
+	ther_set_R25_delta(delta);
+
+	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static unsigned char at_get_R25_delta(char *ret_buf)
+{
+	float delta = ther_get_R25_delta();
+
+	return sprintf((char *)ret_buf, "+R25DELTA:%f\n", delta);
+}
+
+static void at_help(void)
+{
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "-----------------------\n");
+	print(LOG_INFO, "  AT command Help\n");
+	print(LOG_INFO, "-----------------------\n");
+
+	print(LOG_INFO, "    AT\n");
+
+	print(LOG_INFO, "    AT+MODE=[1 | 0]\n");
+	print(LOG_INFO, "    AT+MODE\n");
+	print(LOG_INFO, "\n");
+
+	print(LOG_INFO, "    AT+LDO=[1 | 0]\n");
+	print(LOG_INFO, "\n");
+
+	print(LOG_INFO, "    AT+ADC0\n");
+	print(LOG_INFO, "    AT+ADC1\n");
+	print(LOG_INFO, "\n");
+
+	print(LOG_INFO, "    AT+CH0RT\n");
+	print(LOG_INFO, "    AT+CH1RT\n");
+	print(LOG_INFO, "\n");
+
+	print(LOG_INFO, "    AT+CH0TEMP\n");
+	print(LOG_INFO, "    AT+CH1TEMP\n");
+	print(LOG_INFO, "\n");
+
+	print(LOG_INFO, "    AT+ADC0DELTA=x\n");
+	print(LOG_INFO, "    AT+ADC0DELTA\n");
+
+	print(LOG_INFO, "\n");
 }
 
 void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)
@@ -167,7 +234,7 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 //	print(LOG_DBG, "get cmd <%s>, len %d\n", cmd_buf, len);
 
 	if (strncmp(cmd_buf, AT_CMD, strlen(AT_CMD))) {
-		*ret_len = sprintf((char *)ret_buf, "%s\n", "Not AT cmd");
+		at_help();
 		return;
 	}
 
@@ -227,7 +294,7 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 
 	/* AT+ADC0DELTA=x */
 	} else if (strncmp((char *)cmd_buf, AT_ADC0_DELTA, strlen(AT_ADC0_DELTA)) == 0) {
-		unsigned short delta;
+		short delta;
 
 		p = cmd_buf + strlen(AT_ADC0_DELTA);
 		delta =  atoi(p);
@@ -238,37 +305,34 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	} else if (strcmp((char *)cmd_buf, AT_ADC0_DELTA_Q) == 0) {
 		*ret_len = at_get_adc0_delta(ret_buf);
 
+	/* AT+BDELTA=x */
+	} else if (strncmp((char *)cmd_buf, AT_B_DELTA, strlen(AT_B_DELTA)) == 0) {
+		float delta;
+
+		p = cmd_buf + strlen(AT_B_DELTA);
+		delta =  atof(p);
+
+		*ret_len = at_set_B_delta(ret_buf, delta);
+
+	/* AT+BDELTA */
+	} else if (strcmp((char *)cmd_buf, AT_B_DELTA_Q) == 0) {
+		*ret_len = at_get_B_delta(ret_buf);
+
+	/* AT+R25_DELTA=x */
+	} else if (strncmp((char *)cmd_buf, AT_R25_DELTA, strlen(AT_R25_DELTA)) == 0) {
+		float delta;
+
+		p = cmd_buf + strlen(AT_R25_DELTA);
+		delta =  atof(p);
+
+		*ret_len = at_set_R25_delta(ret_buf, delta);
+
+	/* AT+R25_DELTA= */
+	} else if (strcmp((char *)cmd_buf, AT_R25_DELTA_Q) == 0) {
+		*ret_len = at_get_R25_delta(ret_buf);
+
 	} else {
-		print(LOG_INFO, "\n");
-		print(LOG_INFO, "-----------------------\n");
-		print(LOG_INFO, "  AT command Help\n");
-		print(LOG_INFO, "-----------------------\n");
-
-		print(LOG_INFO, "    AT\n");
-
-		print(LOG_INFO, "    AT+MODE=[1 | 0]\n");
-		print(LOG_INFO, "    AT+MODE\n");
-		print(LOG_INFO, "\n");
-
-		print(LOG_INFO, "    AT+LDO=[1 | 0]\n");
-		print(LOG_INFO, "\n");
-
-		print(LOG_INFO, "    AT+ADC0\n");
-		print(LOG_INFO, "    AT+ADC1\n");
-		print(LOG_INFO, "\n");
-
-		print(LOG_INFO, "    AT+CH0RT\n");
-		print(LOG_INFO, "    AT+CH1RT\n");
-		print(LOG_INFO, "\n");
-
-		print(LOG_INFO, "    AT+CH0TEMP\n");
-		print(LOG_INFO, "    AT+CH1TEMP\n");
-		print(LOG_INFO, "\n");
-
-		print(LOG_INFO, "    AT+ADC0DELTA=x\n");
-		print(LOG_INFO, "    AT+ADC0DELTA\n");
-
-		print(LOG_INFO, "\n");
+		at_help();
 	}
 
 	return;
