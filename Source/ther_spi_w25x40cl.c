@@ -253,7 +253,7 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 	/* get the geometry information */
 	m->size       = CHIP_SIZE;
 	m->erase_size = BYTES_PER_SECTOR;
-	//m->page_size  = PAGE_SIZE;
+	m->write_size = PAGE_SIZE;
 
 	/* get memory type and capacity */
 	memory_type_capacity = id_recv[1];
