@@ -4,9 +4,10 @@
 
 #include "ther_mtd.h"
 
-#define FL_EOK      0
-#define FL_EID      1
-#define FL_ETYPE    2
+#define FL_ERR      0
+#define FL_EOK      1
+#define FL_EID      2
+#define FL_ETYPE    3
 
 struct flash_device {
 

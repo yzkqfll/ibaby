@@ -20,10 +20,9 @@
 #define CONFIG_W25X40CL
 
 #define PAGE_SIZE            (256)
-#define NPAGE_SIZE           (4096)      //16 pages for logic
 
 #ifdef CONFIG_W25X40CL
-#define CHIP_SIZE           (512*1024) //512KB
+#define CHIP_SIZE           (512) //512KB
 
 #define SECTOR_COUNT        (128)
 #define BYTES_PER_SECTOR    (4096)     //4KB
@@ -58,7 +57,6 @@
 
 #define DUMMY                       (0xFF)
 
-struct flash_device flash_dev;
 
 static uint8 w25x_read_status(void)
 {
@@ -75,6 +73,19 @@ static void w25x_wait_busy(void)
 	while( w25x_read_status() & (0x01));
 }
 
+static void w25x_write_disable(void)
+{
+	uint8 cmd = CMD_WRDI;
+	ther_spi_send(&cmd, 1);
+}
+
+static void w25x_write_enable(void)
+{
+	uint8 cmd = CMD_WREN;
+	ther_spi_send(&cmd, 1);
+}
+
+
 /** \brief read [size] byte from [offset] to [buffer]
  *
  * \param offset uint32 unit : byte
@@ -83,12 +94,11 @@ static void w25x_wait_busy(void)
  * \return uint32 byte for read
  *
  */
-static uint32 w25x_read(uint32 offset, uint8 *buffer, uint32 size)
+static uint32 w25x_read_data(uint32 offset, uint8 *buffer, uint32 size)
 {
 	uint8 send_buffer[4];
 
-	send_buffer[0] = CMD_WRDI;
-	ther_spi_send(send_buffer, 1);
+	w25x_write_disable();
 
 	send_buffer[0] = CMD_READ;
 	send_buffer[1] = (uint8)(offset >> 16);
@@ -100,70 +110,19 @@ static uint32 w25x_read(uint32 offset, uint8 *buffer, uint32 size)
 	return size;
 }
 
-static void w25x_sector_erase(uint32 sector_addr)
-{
-	uint8 send_buffer[4];
-
-	send_buffer[0] = CMD_WREN;
-	ther_spi_send(send_buffer, 1);
-
-	send_buffer[0] = CMD_ERASE_4K;
-	send_buffer[1] = (sector_addr >> 16);
-	send_buffer[2] = (sector_addr >> 8);
-	send_buffer[3] = (sector_addr);
-	ther_spi_send(send_buffer, 4);
-
-	w25x_wait_busy(); // wait erase done.
-}
-
-
-/** \brief write N page on [page]
+/** \brief page program (<256 bytes) on [addr]
  *
- * \param page_addr uint32 unit : byte (4096 * N,1 page = 4096byte)
+ * \param addr uint32: byte
  * \param buffer const uint8*
+ * \param size uint32 (1 - 256byte)
  * \return uint32
  *
  */
-static uint32 w25x_npage_write(uint32 page_addr, const uint8 *buffer)
-{
-	uint32 index;
-	uint8 send_buffer[4];
-
-	if ((page_addr & 0xFF) != 0) {
-		print(LOG_ERR, MODULE "page addr must align to 256bytes,dead here!\n");
-		while(1);
-	}
-
-	w25x_sector_erase(page_addr);
-
-	for(index = 0; index < (NPAGE_SIZE / 256); index++) {
-		send_buffer[0] = CMD_WREN;
-		ther_spi_send(send_buffer, 1);
-
-		send_buffer[0] = CMD_PP;
-		send_buffer[1] = (uint8)(page_addr >> 16);
-		send_buffer[2] = (uint8)(page_addr >> 8);
-		send_buffer[3] = (uint8)(page_addr);
-
-		ther_spi_send_then_send(send_buffer, 4, buffer, 256);
-
-		buffer += 256;
-		page_addr += 256;
-		w25x_wait_busy();
-	}
-
-	send_buffer[0] = CMD_WRDI;
-	ther_spi_send(send_buffer, 1);
-
-	return NPAGE_SIZE;
-}
-
-static uint32 w25x_byte_write(uint32 addr, const uint8 *buffer, uint32 size)
+static uint32 w25x_page_program(uint32 addr, const uint8 *buffer, uint32 size)
 {
 	uint8 send_buffer[4];
 
-	send_buffer[0] = CMD_WREN;
-	ther_spi_send(send_buffer, 1);
+	w25x_write_enable();
 
 	send_buffer[0] = CMD_PP;
 	send_buffer[1] = (uint8)(addr >> 16);
@@ -172,24 +131,48 @@ static uint32 w25x_byte_write(uint32 addr, const uint8 *buffer, uint32 size)
 
 	ther_spi_send_then_send(send_buffer, 4, buffer, size);
 
-	send_buffer[0] = CMD_WRDI;
-	ther_spi_send(send_buffer, 1);
+	w25x_wait_busy();
 
 	return size;
-
 }
 
-static uint8 w25x_flash_init(void)
+
+static bool w25x_sector_erase(uint32 sector_addr)
 {
+	uint8 send_buffer[4];
+
+	w25x_write_enable();
+
+	send_buffer[0] = CMD_ERASE_4K;
+	send_buffer[1] = (sector_addr >> 16);
+	send_buffer[2] = (sector_addr >> 8);
+	send_buffer[3] = (sector_addr);
+	ther_spi_send(send_buffer, 4);
+
+	w25x_wait_busy(); // wait erase done.
+
 	return FL_EOK;
 }
 
-static uint8 w25x_flash_open(void)
+static bool w25x_chip_erase(void)
+{
+	uint8 cmd;
+
+	w25x_write_enable();
+
+	cmd = CMD_ERASE_CHIP;
+	ther_spi_send(&cmd, 1);
+
+	w25x_wait_busy(); // wait erase done.
+
+	return FL_EOK;
+}
+
+static bool w25x_flash_open(void)
 {
 	uint8 send_buffer[2];
 
-	send_buffer[0] = CMD_WREN;
-	ther_spi_send(send_buffer, 1);
+	w25x_write_enable();
 
 	send_buffer[0] = CMD_WRSR;
 	send_buffer[1] = 0;
@@ -200,36 +183,57 @@ static uint8 w25x_flash_open(void)
 	return FL_EOK;
 }
 
-static uint8 w25x_flash_close(void)
+static bool w25x_flash_close(void)
 {
 	return FL_EOK;
 }
 
-static uint32 w25x_flash_read(int32 addr, void* buffer, uint32 size)
+static uint32 w25x_flash_read(uint32 addr, void* buffer, uint32 size)
 {
-	w25x_read(addr, buffer, size);
+	w25x_read_data(addr, buffer, size);
 
 	return size;
 }
 
-static uint32 w25x_flash_write(int32 pos, const void* buffer, uint32 size)
+static uint32 w25x_flash_write(uint32 addr, const void* buffer, uint32 size)
 {
-	uint32 i = 0;
-	uint32 block = size;
-	const uint8 *ptr = buffer;
+	uint32 page_num  = size / PAGE_SIZE;
+	const uint8* ptr = buffer;
 
-	while(block--) {
-		w25x_npage_write((pos + i)* BYTES_PER_SECTOR, ptr);
-		ptr += NPAGE_SIZE;
-		i++;
+	if(page_num == 0) {
+		w25x_page_program(addr, ptr, size);
+	} else {
+		if ((addr & 0xFF) != 0) {
+			print(LOG_ERR, MODULE "page addr must align to 256bytes,dead here!\n");
+			while(1);
+		}
+
+		while(page_num--) {
+			w25x_page_program(addr, buffer, 256);
+
+			addr += 256;
+			ptr += 256;
+		}
 	}
 
+	w25x_write_disable();
+
 	return size;
+}
+
+static bool w25x_flash_erase(uint32 addr, uint32 size)
+{
+	if(size == BYTES_PER_SECTOR)
+		return w25x_sector_erase(addr);
+
+	if(size == CHIP_SIZE)
+		return w25x_chip_erase();
+
+	return FL_ERR;
 }
 
 uint8 ther_spi_w25x_init(struct mtd_info *m)
 {
-	struct flash_device *fd = &flash_dev;
 	uint8 cmd;
 	uint8 id_recv[3] = {0, 0, 0};
 	uint16 memory_type_capacity;
@@ -247,9 +251,9 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 	}
 
 	/* get the geometry information */
-	fd->sector_count     = SECTOR_COUNT;
-	fd->bytes_per_sector = BYTES_PER_SECTOR;
-	fd->page_size        = PAGE_SIZE;
+	m->size       = CHIP_SIZE;
+	m->erase_size = BYTES_PER_SECTOR;
+	//m->page_size  = PAGE_SIZE;
 
 	/* get memory type and capacity */
 	memory_type_capacity = id_recv[1];
@@ -263,11 +267,11 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 	}
 
 	/* callback */
-	fd->init    = w25x_flash_init;
-	fd->open    = w25x_flash_open;
-	fd->close   = w25x_flash_close;
-	fd->read    = w25x_flash_read;
-	fd->write   = w25x_flash_write;
+	m->open    = w25x_flash_open;
+	m->close   = w25x_flash_close;
+	m->read    = w25x_flash_read;
+	m->write   = w25x_flash_write;
+	m->erase   = w25x_flash_erase;
 
 	return FL_EOK;
 }
@@ -288,7 +292,7 @@ void ther_spi_w25x_test(void)
 	w25x_sector_erase(0);
 
 	for(i = 0; i < 32; i++) {
-		w25x_byte_write(i, &data_to_wr, 1);
+		w25x_flash_write(i, &data_to_wr, 1);
 
 		w25x_flash_read(i, &data_from_rd, 1);
 
