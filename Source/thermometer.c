@@ -35,6 +35,8 @@
 #include "ther_mtd.h"
 #include "ther_temp.h"
 #include "ther_at.h"
+//#include "ther_spi_w25x40cl.h"
+
 
 #define MODULE "[THER] "
 
@@ -515,7 +517,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 //		oled_show_temp(TRUE, ti->current_temp);
 
-//		ther_spi_w25x_test();
+//		ther_spi_w25x_test(0,1,32);
 
 
 //		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));

@@ -277,31 +277,54 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 }
 
 #ifdef W25X_DEBUG
-void ther_spi_w25x_test(void)
+void ther_spi_w25x_test(uint32 sector_addr, uint32 offset, uint32 size)
 {
 	int i;
-	uint8 data_to_wr = 0x5a;
-	uint8 data_from_rd;
+	uint8 *data_to_wr;
+	uint8 *data_from_rd;
 
-	print(LOG_INFO, MODULE "start flash rd/wr test.\n");
+	print(LOG_INFO, MODULE "flash erase/write/verify test...");
 
 	if(FL_EOK != w25x_flash_open()) {
-		print(LOG_ERR, MODULE "flash open failed!\n");
+		print(LOG_ERR, "open failed!\n");
+		return;
 	}
 
-	w25x_sector_erase(0);
+	data_to_wr = osal_mem_alloc(size);
+	if(data_to_wr == NULL) {
+		print(LOG_ERR, "out of memory!\n");
+		return;
+	}
 
-	for(i = 0; i < 32; i++) {
-		w25x_flash_write(i, &data_to_wr, 1);
+	data_from_rd = osal_mem_alloc(size);
+	if(data_from_rd == NULL) {
+		print(LOG_ERR, "out of memory!\n");
+		osal_mem_free(data_to_wr);
+		return;
+	}
 
-		w25x_flash_read(i, &data_from_rd, 1);
+	for(i = 0; i < size; i++) {
+		data_to_wr[i] = 0x5a;
+	}
 
-		if(data_from_rd != 0x5a) {
-			print(LOG_INFO, MODULE "flash test failed \n");
+	w25x_sector_erase(sector_addr);
+
+	w25x_flash_write(sector_addr + offset, data_to_wr, size);
+
+	w25x_flash_read(sector_addr + offset, data_from_rd, size);
+
+	for(i = 0; i < size; i++) {
+		if(data_from_rd[i] != data_to_wr[i]) {
+			osal_mem_free(data_from_rd);
+			osal_mem_free(data_to_wr);
+			print(LOG_INFO, "failed(%d,%X)!\n", i, data_from_rd[i]);
+			return;
 		}
 	}
 
-	print(LOG_INFO, MODULE "finish flash rd/wr(%dB) test.\n", i);
+	osal_mem_free(data_from_rd);
+	osal_mem_free(data_to_wr);
+	print(LOG_INFO, "OK!\n", i);
 }
 #endif
 
