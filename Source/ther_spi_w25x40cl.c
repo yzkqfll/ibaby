@@ -235,6 +235,7 @@ int8 ther_spi_w25x_init(struct mtd_info *m)
 	m->size       = CHIP_SIZE;
 	m->erase_size = BYTES_PER_SECTOR;
 	m->write_size = PAGE_SIZE;
+	m->read_size = ULONG_MAX;
 
 	/* get memory type and capacity */
 	memory_type_capacity = id_recv[1];

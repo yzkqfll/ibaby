@@ -24,7 +24,6 @@ enum {
 	MTD_ERR_MEM_TYPE_CAP,
 };
 
-#define MAX_UINT32  ~((uint32)0)
 
 struct mtd_info {
 	uint32 size;
@@ -42,6 +41,11 @@ struct mtd_info {
 
 void ther_mtd_init(void);
 struct mtd_info* get_mtd(void);
+int8 ther_mtd_open(struct mtd_info* m);
+int8 ther_mtd_close(struct mtd_info* m);
+int8 ther_mtd_erase(struct mtd_info* m, uint32 addr, uint32 len, uint32 *ret_len);
+int8 ther_mtd_read(struct mtd_info* m, uint32 addr, void *buf, uint32 len, uint32 *ret_len);
+int8 ther_mtd_write(struct mtd_info* m, uint32 addr, void *buf, uint32 len, uint32 *ret_len);
 
 #endif
 

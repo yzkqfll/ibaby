@@ -51,7 +51,7 @@ int8 ther_mtd_read(struct mtd_info* m, uint32 addr, void *buf, uint32 len, uint3
 	int8 ret = MTD_OK;
 	uint32 size_read = 0;
 
-	if (m->read_size == MAX_UINT32) {
+	if (m->read_size == ULONG_MAX) {
 		ret = m->read(addr, buf, len);
 		if (!ret)
 			size_read += len;
@@ -92,6 +92,15 @@ int8 ther_mtd_write(struct mtd_info* m, uint32 addr, void *buf, uint32 len, uint
 	return ret;
 }
 
+int8 ther_mtd_open(struct mtd_info* m)
+{
+	return m->open();
+}
+
+int8 ther_mtd_close(struct mtd_info* m)
+{
+	return m->close();
+}
 
 void ther_mtd_init(void)
 {

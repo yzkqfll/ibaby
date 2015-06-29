@@ -40,6 +40,7 @@
 #define AT_R25_DELTA "AT+R25_DELTA="
 #define AT_R25_DELTA_Q "AT+R25_DELTA"
 
+#define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
 
 static unsigned char at_enter_cal_mode(char *ret_buf)
@@ -203,36 +204,8 @@ static void at_test(void)
 
 static void at_help(void)
 {
-	print(LOG_INFO, "\n");
-	print(LOG_INFO, "-----------------------\n");
-	print(LOG_INFO, "  AT command Help\n");
-	print(LOG_INFO, "-----------------------\n");
+	print(LOG_INFO, "Unknown AT command\n");
 
-	print(LOG_INFO, "    AT\n");
-
-	print(LOG_INFO, "    AT+MODE=[1 | 0]\n");
-	print(LOG_INFO, "    AT+MODE\n");
-	print(LOG_INFO, "\n");
-
-	print(LOG_INFO, "    AT+LDO=[1 | 0]\n");
-	print(LOG_INFO, "\n");
-
-	print(LOG_INFO, "    AT+ADC0\n");
-	print(LOG_INFO, "    AT+ADC1\n");
-	print(LOG_INFO, "\n");
-
-	print(LOG_INFO, "    AT+CH0RT\n");
-	print(LOG_INFO, "    AT+CH1RT\n");
-	print(LOG_INFO, "\n");
-
-	print(LOG_INFO, "    AT+CH0TEMP\n");
-	print(LOG_INFO, "    AT+CH1TEMP\n");
-	print(LOG_INFO, "\n");
-
-	print(LOG_INFO, "    AT+ADC0DELTA=x\n");
-	print(LOG_INFO, "    AT+ADC0DELTA\n");
-
-	print(LOG_INFO, "\n");
 }
 
 void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)
@@ -263,6 +236,9 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 
 	} else if (strcmp(cmd_buf, AT_TEST) == 0) {
 		at_test();
+
+	} else if (strcmp(cmd_buf, AT_ALIVE) == 0) {
+
 
 	/* AT+MODE=x */
 	} else if (strncmp((char *)cmd_buf, AT_MODE, strlen(AT_MODE)) == 0) {
