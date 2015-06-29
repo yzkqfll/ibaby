@@ -12,6 +12,7 @@
 #include "ther_temp.h"
 #include "ther_adc.h"
 #include "thermometer.h"
+#include "ther_storage.h"
 
 #define MODULE "[THER AT] "
 
@@ -24,6 +25,8 @@
 #define AT_LDO_Q "AT+LDO"
 #define AT_ADC0 "AT+ADC0"
 #define AT_ADC1 "AT+ADC1"
+#define AT_HWADC0 "AT+HWADC0"
+#define AT_HWADC1 "AT+HWADC1"
 #define AT_CH0RT "AT+CH0RT"
 #define AT_CH1RT "AT+CH1RT"
 #define AT_TEMP0 "AT+CH0TEMP"
@@ -37,12 +40,14 @@
 #define AT_R25_DELTA "AT+R25_DELTA="
 #define AT_R25_DELTA_Q "AT+R25_DELTA"
 
+#define AT_TEST "AT+TEST"
+
 static unsigned char at_enter_cal_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
 	if (ti->mode == CAL_MODE) {
-		return sprintf((char *)ret_buf, "%s\n", "Already in cal mode");
+		return sprintf((char *)ret_buf, "%s\n", "OK");
 	}
 
 	/* test */
@@ -122,6 +127,13 @@ static unsigned char at_get_adc(char *ret_buf, unsigned char channel)
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
+static unsigned char at_get_hw_adc(char *ret_buf, unsigned char channel)
+{
+	unsigned short adc = ther_get_hw_adc(channel);
+
+	return sprintf((char *)ret_buf, "+HWADC%d:%d\n", channel, adc);
+}
+
 static unsigned char at_get_ch_Rt(char *ret_buf, unsigned char ch)
 {
 	float Rt;
@@ -180,6 +192,13 @@ static unsigned char at_get_R25_delta(char *ret_buf)
 	float delta = ther_get_R25_delta();
 
 	return sprintf((char *)ret_buf, "+R25DELTA:%f\n", delta);
+}
+
+static void at_test(void)
+{
+//	print(LOG_INFO, "P0INP 0x%x, P2INP 0x%x\n", P0INP, P2INP);
+
+	ther_storage_test();
 }
 
 static void at_help(void)
@@ -242,6 +261,9 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	if (strcmp(cmd_buf, AT_CMD) == 0) {
 		*ret_len = sprintf((char *)ret_buf, "%s\n", "OK");
 
+	} else if (strcmp(cmd_buf, AT_TEST) == 0) {
+		at_test();
+
 	/* AT+MODE=x */
 	} else if (strncmp((char *)cmd_buf, AT_MODE, strlen(AT_MODE)) == 0) {
 		p = cmd_buf + strlen(AT_MODE);
@@ -275,6 +297,14 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	/* AT+ADC1 */
 	} else if (strcmp((char *)cmd_buf, AT_ADC1) == 0) {
 		*ret_len = at_get_adc(ret_buf, HAL_ADC_CHANNEL_1);
+
+	/* AT+HWADC0 */
+	} else if (strcmp((char *)cmd_buf, AT_HWADC0) == 0) {
+		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_0);
+
+	/* AT+HWADC1 */
+	} else if (strcmp((char *)cmd_buf, AT_HWADC1) == 0) {
+		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_1);
 
 	/* AT+CH0RT */
 	} else if (strcmp((char *)cmd_buf, AT_CH0RT) == 0) {

@@ -458,6 +458,53 @@ void oled_drv_fill_screen(unsigned char val)
 	}
 }
 
+void oled_drv_charge_pump_enable(void)
+{
+	set_charge_pump(CHARGE_PUMP_ENABLE);
+}
+
+void oled_drv_charge_pump_disable(void)
+{
+	set_charge_pump(CHARGE_PUMP_DISABLE);
+
+}
+
+void oled_drv_init_device(void)
+{
+	set_display_onoff(DISPLAY_OFF);
+
+	set_charge_pump(CHARGE_PUMP_ENABLE);
+	set_precharge_period(0xD2); // yuanjie: 0xf1
+	set_vcomh_deselect(VCOMH_LEVEL_HIGH);
+
+	set_start_page(0);
+	set_start_column(0);
+
+	set_display_clock(0xA0); // yuanjie: 0x80
+	set_multiplex_ratio(0x27); // yuanjie: 0x3f
+
+	set_addressing_mode(PAGE_ADDRESSING_MODE);
+
+	set_display_offset(0);
+	set_start_line(0);
+
+	set_segment_remap(REMAP_OFF); /* yuanjie: REMAP_ON */
+
+	set_com_remap(COM_REMAP_ENABLE); /* yuanjie: COM_REMAP_ENABLE */
+	set_com_config(COM_CONFIG(ALTERNATIVE_COM_CONFIG, DISABLE_COM_REMAP));
+
+	set_contrast(0xCF);
+
+//	set_charge_pump(CHARGE_PUMP_ENABLE);
+//	set_precharge_period(0xD2); // yuanjie: 0xf1
+//	set_vcomh_deselect(VCOMH_LEVEL_HIGH);
+
+	set_entire_display(NORMAL_DISPLAY);
+	set_display_inverse(INVERSE_OFF);
+
+	oled_drv_fill_screen(0x0);
+}
+
 static void init_gpio(void)
 {
 	/*
@@ -478,38 +525,6 @@ static void init_gpio(void)
 static void reset_gpio(void)
 {
 
-}
-
-void oled_drv_init_device(void)
-{
-	set_display_onoff(DISPLAY_OFF);
-
-	set_start_page(0);
-	set_start_column(0);
-
-	set_display_clock(0xA0); // yuanjie: 0x80
-	set_multiplex_ratio(0x27); // yuanjie: 0x3f
-
-	set_addressing_mode(PAGE_ADDRESSING_MODE);
-
-	set_display_offset(0);
-	set_start_line(0);
-
-	set_segment_remap(REMAP_OFF); /* yuanjie: REMAP_ON */
-
-	set_com_remap(COM_REMAP_ENABLE); /* yuanjie: COM_REMAP_ENABLE */
-	set_com_config(COM_CONFIG(ALTERNATIVE_COM_CONFIG, DISABLE_COM_REMAP));
-
-	set_contrast(0xCF);
-
-	set_charge_pump(CHARGE_PUMP_ENABLE);
-	set_precharge_period(0xD2); // yuanjie: 0xf1
-	set_vcomh_deselect(VCOMH_LEVEL_HIGH);
-
-	set_entire_display(NORMAL_DISPLAY);
-	set_display_inverse(INVERSE_OFF);
-
-	oled_drv_fill_screen(0x0);
 }
 
 void oled_drv_init(void)

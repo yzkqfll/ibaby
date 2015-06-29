@@ -384,6 +384,9 @@ void oled_display_power_off(void)
 	struct oled_display *od = &display;
 
 	oled_drv_display_off();
+
+	oled_drv_charge_pump_disable();
+
 	oled_drv_power_off_vcc();
 
 	od->state = STATE_VCC_OFF;
@@ -400,6 +403,7 @@ void oled_display_state_machine(void)
 	 */
 	case STATE_POWER_OFF:
 		oled_drv_power_on_vdd();
+		oled_drv_power_on_vcc();
 
 		od->state = STATE_VDD_ON;
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VDD_ON);
@@ -407,7 +411,6 @@ void oled_display_state_machine(void)
 
 	case STATE_VDD_ON:
 		oled_drv_init_device();
-		oled_drv_power_on_vcc();
 
 		od->state = STATE_DISPLAY_ON;
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VCC_ON);

@@ -1176,6 +1176,12 @@
       <name>$PROJ_DIR$\..\Source\ther_spi_w25x40cl.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_storage.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_storage.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_temp.c</name>
     </file>
     <file>

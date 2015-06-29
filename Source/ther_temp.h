@@ -11,7 +11,8 @@ void ther_temp_power_on(void);
 void ther_temp_power_off(void);
 
 unsigned short ther_get_temp(void);
-unsigned short ther_get_adc(unsigned char channel);
+unsigned short ther_get_adc(unsigned char ch);
+unsigned short ther_get_hw_adc(unsigned char ch);
 
 void ther_set_adc0_delta(short delta);
 short ther_get_adc0_delta(void);

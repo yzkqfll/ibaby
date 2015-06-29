@@ -23,5 +23,8 @@ void oled_drv_power_off_vcc(void);
 void oled_drv_display_off(void);
 void oled_drv_display_on(void);
 
+void oled_drv_charge_pump_enable(void);
+void oled_drv_charge_pump_disable(void);
+
 #endif
 

@@ -122,21 +122,26 @@ void ther_temp_power_off(void)
 	disable_ldo();
 }
 
-unsigned short ther_get_adc(unsigned char channel)
+unsigned short ther_get_hw_adc(unsigned char ch)
 {
-	struct ther_temp *t = &ther_temp;
 	unsigned short adc = 0;
 
-	if (channel < HAL_ADC_CHANNEL_2) {
+	if (ch < HAL_ADC_CHANNEL_2) {
 		P0_6 = 1;
-		adc = read_adc(channel, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+		adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
 		P0_6 = 0;
-
-		if (channel == HAL_ADC_CHANNEL_0)
-			adc += t->adc0_delta;
 	}
-
 	return adc;
+}
+
+unsigned short ther_get_adc(unsigned char ch)
+{
+	struct ther_temp *t = &ther_temp;
+	unsigned short adc;
+
+	adc = ther_get_hw_adc(ch);
+
+	return adc + t->adc0_delta;
 }
 
 void ther_set_adc0_delta(short delta)
@@ -290,10 +295,16 @@ void ther_temp_init(void)
 	/* P0.7, P0.0, P0.1: input, 3-state */
 	P0SEL |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
 	/* override P0SEL */
-	ADCCFG |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
+//	ADCCFG |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
+
+	// fix ADC problem
+//	ADCCON1 = 0x13;
 
 	P0DIR &= ~(BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
-	P0INP |= BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT); /* 3-state */
+	/* 3-state */
+//	P0INP |= BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT);
+	P0INP &= ~BV(ADC_HIGH_RRECISION_BIT);
+	P2INP |= BV(5);
 
 	/* For Jerry test: P0.6 */
 	P0DIR |= BV(6);
