@@ -11,10 +11,17 @@ enum {
 
 	/* erase error */
 	MTD_ERR_ERASE_TIMEOUT,
+	MTD_ERR_ERASE_SIZE,
 
 	/* program error */
 
 	/* read error */
+
+	/* Manufacturers ID error */
+	MTD_ERR_MF_ID,
+
+	/* memory type and capacity error */
+	MTD_ERR_MEM_TYPE_CAP,
 };
 
 #define MAX_UINT32  ~((uint32)0)

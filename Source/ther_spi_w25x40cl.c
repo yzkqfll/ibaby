@@ -94,7 +94,7 @@ static void w25x_write_enable(void)
  * \return uint32 byte for read
  *
  */
-static uint32 w25x_read_data(uint32 offset, uint8 *buffer, uint32 size)
+static int8 w25x_read_data(uint32 offset, uint8 *buffer, uint32 size)
 {
 	uint8 send_buffer[4];
 
@@ -107,7 +107,7 @@ static uint32 w25x_read_data(uint32 offset, uint8 *buffer, uint32 size)
 
 	ther_spi_send_then_recv(send_buffer, 4, buffer, size);
 
-	return size;
+	return MTD_OK;
 }
 
 /** \brief page program (<256 bytes) on [addr]
@@ -118,7 +118,7 @@ static uint32 w25x_read_data(uint32 offset, uint8 *buffer, uint32 size)
  * \return uint32
  *
  */
-static uint32 w25x_page_program(uint32 addr, const uint8 *buffer, uint32 size)
+static int8 w25x_page_program(uint32 addr, const uint8 *buffer, uint32 size)
 {
 	uint8 send_buffer[4];
 
@@ -133,11 +133,11 @@ static uint32 w25x_page_program(uint32 addr, const uint8 *buffer, uint32 size)
 
 	w25x_wait_busy();
 
-	return size;
+	return MTD_OK;
 }
 
 
-static bool w25x_sector_erase(uint32 sector_addr)
+static int8 w25x_sector_erase(uint32 sector_addr)
 {
 	uint8 send_buffer[4];
 
@@ -151,10 +151,10 @@ static bool w25x_sector_erase(uint32 sector_addr)
 
 	w25x_wait_busy(); // wait erase done.
 
-	return FL_EOK;
+	return MTD_OK;
 }
 
-static bool w25x_chip_erase(void)
+static int8 w25x_chip_erase(void)
 {
 	uint8 cmd;
 
@@ -165,10 +165,10 @@ static bool w25x_chip_erase(void)
 
 	w25x_wait_busy(); // wait erase done.
 
-	return FL_EOK;
+	return MTD_OK;
 }
 
-static bool w25x_flash_open(void)
+static int8 w25x_flash_open(void)
 {
 	uint8 send_buffer[2];
 
@@ -180,48 +180,29 @@ static bool w25x_flash_open(void)
 
 	w25x_wait_busy();
 
-	return FL_EOK;
+	return MTD_OK;
 }
 
-static bool w25x_flash_close(void)
+static int8 w25x_flash_close(void)
 {
-	return FL_EOK;
+	return MTD_OK;
 }
 
-static uint32 w25x_flash_read(uint32 addr, void* buffer, uint32 size)
+static int8 w25x_flash_read(uint32 addr, void* buffer, uint32 size)
 {
-	w25x_read_data(addr, buffer, size);
+	uint8* ptr = buffer;
 
-	return size;
+	return w25x_read_data(addr, ptr, size);
 }
 
-static uint32 w25x_flash_write(uint32 addr, const void* buffer, uint32 size)
+static int8 w25x_flash_write(uint32 addr, const void* buffer, uint32 size)
 {
-	uint32 page_num  = size / PAGE_SIZE;
 	const uint8* ptr = buffer;
-
-	if(page_num == 0) {
-		w25x_page_program(addr, ptr, size);
-	} else {
-		if ((addr & 0xFF) != 0) {
-			print(LOG_ERR, MODULE "page addr must align to 256bytes,dead here!\n");
-			while(1);
-		}
-
-		while(page_num--) {
-			w25x_page_program(addr, buffer, 256);
-
-			addr += 256;
-			ptr += 256;
-		}
-	}
-
-	w25x_write_disable();
-
-	return size;
+	
+	return w25x_page_program(addr, ptr, size);
 }
 
-static bool w25x_flash_erase(uint32 addr, uint32 size)
+static int8 w25x_flash_erase(uint32 addr, uint32 size)
 {
 	if(size == BYTES_PER_SECTOR)
 		return w25x_sector_erase(addr);
@@ -229,10 +210,10 @@ static bool w25x_flash_erase(uint32 addr, uint32 size)
 	if(size == CHIP_SIZE)
 		return w25x_chip_erase();
 
-	return FL_ERR;
+	return -MTD_ERR_ERASE_SIZE;
 }
 
-uint8 ther_spi_w25x_init(struct mtd_info *m)
+int8 ther_spi_w25x_init(struct mtd_info *m)
 {
 	uint8 cmd;
 	uint8 id_recv[3] = {0, 0, 0};
@@ -247,7 +228,7 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 
 	if(id_recv[0] != MF_ID) {
 		print(LOG_INFO, MODULE "Manufacturers ID(%x) error!\n", id_recv[0]);
-		return FL_EID;
+		return -MTD_ERR_MF_ID;
 	}
 
 	/* get the geometry information */
@@ -263,7 +244,7 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 		print(LOG_INFO, MODULE "W25X40CL detection is ok\n");
 	} else {
 		print(LOG_INFO, MODULE "memory type(%x) capacity(%x) error!\n", id_recv[1], id_recv[2]);
-		return FL_ETYPE;
+		return -MTD_ERR_MEM_TYPE_CAP;
 	}
 
 	/* callback */
@@ -273,7 +254,7 @@ uint8 ther_spi_w25x_init(struct mtd_info *m)
 	m->write   = w25x_flash_write;
 	m->erase   = w25x_flash_erase;
 
-	return FL_EOK;
+	return MTD_OK;
 }
 
 #ifdef W25X_DEBUG
@@ -285,7 +266,7 @@ void ther_spi_w25x_test(uint32 sector_addr, uint32 offset, uint32 size)
 
 	print(LOG_INFO, MODULE "flash erase/write/verify test...");
 
-	if(FL_EOK != w25x_flash_open()) {
+	if(MTD_OK != w25x_flash_open()) {
 		print(LOG_ERR, "open failed!\n");
 		return;
 	}
