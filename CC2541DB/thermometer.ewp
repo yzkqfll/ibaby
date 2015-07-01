@@ -1140,6 +1140,12 @@
       <name>$PROJ_DIR$\..\Source\ther_comm.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_misc.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_misc.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_mtd.c</name>
     </file>
     <file>

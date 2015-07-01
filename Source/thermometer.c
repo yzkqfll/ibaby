@@ -35,7 +35,7 @@
 #include "ther_mtd.h"
 #include "ther_temp.h"
 #include "ther_at.h"
-//#include "ther_spi_w25x40cl.h"
+#include "ther_misc.h"
 
 
 #define MODULE "[THER] "
@@ -72,6 +72,11 @@ struct ther_info ther_info;
 #define TEMP_POWER_SETUP_TIME 10 /* ms */
 #define TEMP_MEASURE_INTERVAL SEC_TO_MS(5)
 #define TEMP_MEASURE_MIN_INTERVAL SEC_TO_MS(1)
+
+/*
+ * Watchdog
+ */
+#define WATCHDOG_FEED_INTERVAL 500
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -351,7 +356,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
 
 	/* test */
-	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
+//	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 }
 
 static void ther_system_power_off_pre(struct ther_info *ti)
@@ -387,6 +392,12 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 static void ther_system_power_off_post(struct ther_info *ti)
 {
 	ther_device_exit_post(ti);
+
+	/*
+	 * do not stop wd timer here,
+	 * so the wd timer will be auto running after power on
+	 */
+/*	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);*/
 
 	ti->power_mode = PM_3;
 	/* go to PM3 */
@@ -510,10 +521,17 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		return (events ^ TH_BUTTON_EVT);
 	}
 
+	if (events & TH_WATCHDOG_EVT) {
+		feed_watchdog();
+		osal_start_timerEx(ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
+
+		return (events ^ TH_WATCHDOG_EVT);
+	}
+
 	if (events & TH_TEST_EVT) {
 //		oled_picture_inverse();
 
-//		print(LOG_DBG, MODULE "live\n");
+		print(LOG_DBG, MODULE "live\n");
 
 //		oled_show_temp(TRUE, ti->current_temp);
 
@@ -523,7 +541,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 //		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
 //		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));
 
-//		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
+		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1000);
 
 		return (events ^ TH_TEST_EVT);
 	}
@@ -553,6 +571,9 @@ void Thermometer_Init(uint8 task_id)
 	ti->task_id = task_id;
 
 	ti->power_mode = PM_ACTIVE;
+
+	start_watchdog_timer();
+	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
 
 	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 }
