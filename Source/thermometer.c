@@ -15,7 +15,7 @@
 #include "linkdb.h"
 #include "peripheral.h"
 #include "gapbondmgr.h"
-#include "ther_profile.h"
+#include "ther_service.h"
 #include "devinfoservice.h"
 #include "thermometer.h"
 #include "timeapp.h"
@@ -36,7 +36,7 @@
 #include "ther_temp.h"
 #include "ther_at.h"
 #include "ther_misc.h"
-
+#include "ther_batt_service.h"
 
 #define MODULE "[THER] "
 
@@ -77,6 +77,11 @@ struct ther_info ther_info;
  * Watchdog
  */
 #define WATCHDOG_FEED_INTERVAL 500
+
+/*
+ * Batt
+ */
+#define BATT_MEASURE_INTERVAL 30000
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -355,6 +360,12 @@ static void ther_system_power_on(struct ther_info *ti)
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
 
+	/*
+	 * batt measure
+	 */
+	osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
+
+
 	/* test */
 //	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 }
@@ -365,6 +376,11 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 
 	/* test */
 	osal_stop_timerEx(ti->task_id, TH_TEST_EVT);
+
+	/*
+	 * batt measure
+	 */
+	osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
 
 	/*
 	 * stop temp measurement
@@ -447,17 +463,32 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		return (events ^ TH_POWER_OFF_EVT);
 	}
 
+	/* batt measure */
+	if (events & TH_BATT_EVT) {
+		if (ti->mode == NORMAL_MODE) {
+			Batt_MeasLevel();
+			ti->batt_percentage = ther_batt_get_percentage();
+			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
+
+			osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
+		}
+
+		return (events ^ TH_BATT_EVT);
+	}
+
 	/* temp measure event */
 	if (events & TH_TEMP_MEASURE_EVT) {
+
+		if (ti->mode != NORMAL_MODE) {
+			return (events ^ TH_TEMP_MEASURE_EVT);
+		}
 
 		switch (ti->temp_measure_stage) {
 		case TEMP_STAGE_SETUP:
 			ther_temp_power_on();
 
-			if (ti->mode == NORMAL_MODE) {
-				osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
-				ti->temp_measure_stage = TEMP_STAGE_MEASURE;
-			}
+			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
+			ti->temp_measure_stage = TEMP_STAGE_MEASURE;
 			break;
 
 		case TEMP_STAGE_MEASURE:
@@ -487,8 +518,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				oled_update_picture(OLED_PICTURE1, OLED_CONTENT_TEMP, ti->temp_current);
 			}
 
-			if (ti->mode == NORMAL_MODE)
-				osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
+			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
 			ti->temp_measure_stage = TEMP_STAGE_SETUP;
 			break;
 
@@ -528,6 +558,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		return (events ^ TH_WATCHDOG_EVT);
 	}
 
+
 	if (events & TH_TEST_EVT) {
 //		oled_picture_inverse();
 
@@ -536,7 +567,6 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 //		oled_show_temp(TRUE, ti->current_temp);
 
 //		ther_spi_w25x_test(0,1,32);
-
 
 //		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
 //		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));

@@ -61,7 +61,8 @@ extern "C"
 #define TH_BUTTON_EVT				0x0008
 #define TH_TEMP_MEASURE_EVT			0x0010
 #define TH_DISPLAY_EVT				0x0020
-#define TH_WATCHDOG_EVT             0x0040
+#define TH_WATCHDOG_EVT				0x0040
+#define TH_BATT_EVT					0x0080
 #define TH_TEST_EVT					0x0800
 
 enum {
@@ -104,6 +105,9 @@ struct ther_info {
 	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
 	unsigned long temp_measure_interval;
 	bool has_history_temp;
+
+	/* batt */
+	unsigned char batt_percentage;
 };
 extern struct ther_info ther_info;
 
