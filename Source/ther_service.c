@@ -49,7 +49,7 @@
 #include "gatt_profile_uuid.h"
 #include "gattservapp.h"
 #include "gapbondmgr.h"
-#include "ther_profile.h"
+#include "ther_service.h"
 
 #include "ther_uart.h"
 
@@ -535,6 +535,7 @@ bStatus_t Thermometer_IMeasNotify( uint16 connHandle, attHandleValueNoti_t *pNot
   {
     // Set the handle
     pNoti->handle = thermometerAttrTbl[THERMOMETER_IMEAS_VALUE_POS].handle;
+  
     // Send the Notification
     return GATT_Notification( connHandle, pNoti, FALSE );
   }
@@ -634,8 +635,8 @@ static bStatus_t thermometer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pA
                                                  offset, GATT_CLIENT_CFG_INDICATE );
         if ( status == SUCCESS )
         {
-          uint16 value = BUILD_UINT16( pValue[0], pValue[1] );
-
+          uint16 value = BUILD_UINT16( pValue[0], pValue[1] );      
+        
           (*thermometerServiceCB)( (value == GATT_CFG_NO_OPERATION) ? 
                                    THERMOMETER_TEMP_IND_DISABLED :
                                    THERMOMETER_TEMP_IND_ENABLED );
@@ -682,7 +683,6 @@ static bStatus_t thermometer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pA
       break;
   
     case MEAS_INTERVAL_UUID:
-
       // Validate the value
       // Make sure it's not a blob oper
       if ( offset == 0 )

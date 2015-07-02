@@ -72,10 +72,10 @@ bool ther_read_zero_cal_info(short *delta)
 
 void ther_storage_test(void)
 {
-	struct mtd_info*m = get_mtd();
-	short delta;
-	unsigned short data = 0x1234, data2;
-	struct zero_cal zc, zc2;
+//	struct mtd_info*m = get_mtd();
+//	short delta;
+//	unsigned short data = 0x1234, data2;
+//	struct zero_cal zc, zc2;
 
 //	if (!ther_write_zero_cal_info(66, 100))
 //		print(LOG_DBG, "fail to write\n");
@@ -83,12 +83,12 @@ void ther_storage_test(void)
 //	if (!ther_read_zero_cal_info(&delta))
 //		print(LOG_DBG, "fail to read\n");
 
-	zc.hw_adc0 = 33;
-	zc.delta = 55;
-	ther_mtd_erase(get_mtd(), 0, m->erase_size, NULL);
-	ther_mtd_write(m, 0, &zc, sizeof(zc), NULL);
-	ther_mtd_read(m, 0, &zc2, sizeof(zc2), NULL);
-	print(LOG_DBG, "--> %d, %d\n", zc2.hw_adc0, zc2.delta);
+//	zc.hw_adc0 = 33;
+//	zc.delta = 55;
+//	ther_mtd_erase(get_mtd(), 0, m->erase_size, NULL);
+//	ther_mtd_write(m, 0, &zc, sizeof(zc), NULL);
+//	ther_mtd_read(m, 0, &zc2, sizeof(zc2), NULL);
+//	print(LOG_DBG, "--> %d, %d\n", zc2.hw_adc0, zc2.delta);
 
 //	print(LOG_DBG, "--> delta = %d\n", delta);
 }

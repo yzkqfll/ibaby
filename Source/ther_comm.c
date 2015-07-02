@@ -15,7 +15,7 @@
 #include "linkdb.h"
 #include "peripheral.h"
 #include "gapbondmgr.h"
-#include "ther_profile.h"
+#include "ther_service.h"
 #include "devinfoservice.h"
 #include "thermometer.h"
 #include "timeapp.h"

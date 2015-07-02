@@ -477,7 +477,6 @@
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\host</state>
           <state>$PROJ_DIR$\..\..\Profiles\Roles</state>
           <state>$PROJ_DIR$\..\..\Profiles\DevInfo</state>
-          <state>$PROJ_DIR$\..\..\Profiles\Batt</state>
           <state>$PROJ_DIR$\..\..\Profiles\HidDev</state>
           <state>$PROJ_DIR$\..\Source</state>
         </option>
@@ -1116,6 +1115,12 @@
       <name>$PROJ_DIR$\..\Source\ther_at.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_batt_service.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_batt_service.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_ble.c</name>
     </file>
     <file>
@@ -1164,10 +1169,10 @@
       <name>$PROJ_DIR$\..\Source\ther_oled9639_drv.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_profile.c</name>
+      <name>$PROJ_DIR$\..\Source\ther_service.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_profile.h</name>
+      <name>$PROJ_DIR$\..\Source\ther_service.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_spi_drv.c</name>
@@ -1295,9 +1300,6 @@
         </group>
         <group>
           <name>Drivers</name>
-          <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2540EB\hal_adc.c</name>
-          </file>
           <file>
             <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2540EB\hal_aes.c</name>
           </file>
@@ -1436,12 +1438,6 @@
   </group>
   <group>
     <name>PROFILES</name>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\Batt\battservice.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\Batt\battservice.h</name>
-    </file>
     <file>
       <name>$PROJ_DIR$\..\..\Profiles\DevInfo\devinfoservice.c</name>
     </file>

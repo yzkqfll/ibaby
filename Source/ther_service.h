@@ -37,8 +37,8 @@
   contact Texas Instruments Incorporated at www.TI.com.
 **************************************************************************************************/
 
-#ifndef __THER_PROFILE_H__
-#define __THER_PROFILE_H__
+#ifndef __THER_SERVICE_H__
+#define __THER_SERVICE_H__
 
 #ifdef __cplusplus
 extern "C"

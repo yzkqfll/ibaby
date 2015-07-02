@@ -47,7 +47,7 @@
 #include "gatt_uuid.h"
 #include "gatt_profile_uuid.h"
 #include "timeapp.h"
-#include "battservice.h"
+#include "ther_batt_service.h"
 
 
 /*********************************************************************
