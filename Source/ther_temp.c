@@ -9,6 +9,8 @@
 #include "ther_uart.h"
 #include "ther_adc.h"
 #include "ther_temp.h"
+#include "ther_storage.h"
+
 
 #define MODULE "[THER TEMP] "
 
@@ -126,11 +128,11 @@ unsigned short ther_get_hw_adc(unsigned char ch)
 {
 	unsigned short adc = 0;
 
-	if (ch < HAL_ADC_CHANNEL_2) {
-		P0_6 = 1;
+//	P0_6 = 1;
+	if (ch <= HAL_ADC_CHANNEL_7)
 		adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
-		P0_6 = 0;
-	}
+//	P0_6 = 0;
+
 	return adc;
 }
 
@@ -141,12 +143,19 @@ unsigned short ther_get_adc(unsigned char ch)
 
 	adc = ther_get_hw_adc(ch);
 
-	return adc + t->adc0_delta;
+	if (ch == HAL_ADC_CHANNEL_0)
+		adc += t->adc0_delta;
+	else
+		adc += 0;
+
+	return adc;
 }
 
 void ther_set_adc0_delta(short delta)
 {
 	struct ther_temp *t = &ther_temp;
+
+	ther_write_zero_cal_info(0, delta);
 
 	t->adc0_delta = delta;
 }
@@ -250,7 +259,7 @@ unsigned short ther_get_temp(void)
 	struct ther_temp *t = &ther_temp;
 	unsigned short temp; /* 377 => 37.7 Celsius */
 
-	t->channel = HAL_ADC_CHANNEL_0;
+	t->channel = HAL_ADC_CHANNEL_1;
 	temp = ther_get_ch_temp_print(t->channel);
 
 	if ((t->channel == HAL_ADC_CHANNEL_1) && (temp > CH0_TEMP_MIN + TEMP_MARGIN)) {
@@ -289,25 +298,16 @@ void ther_temp_init(void)
 	 */
 	P2SEL &= ~BV(1); /* P2.3 function select: GPIO */
 	P2DIR |= BV(LDO_ENABLE_BIT); /* P2.3 as output */
-//	P2INP &= ~BV(7); /* all port2 pins pull up */
-//	P2INP |= BV(LDO_ENABLE_BIT); /* 3-state */
 
 	/* P0.7, P0.0, P0.1: input, 3-state */
 	P0SEL |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
 	/* override P0SEL */
-//	ADCCFG |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
-
-	// fix ADC problem
-//	ADCCON1 = 0x13;
-
-	P0DIR &= ~(BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
-	/* 3-state */
-//	P0INP |= BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT);
-	P0INP &= ~BV(ADC_HIGH_RRECISION_BIT);
-	P2INP |= BV(5);
+	APCFG |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
 
 	/* For Jerry test: P0.6 */
-	P0DIR |= BV(6);
-	P0SEL &= ~BV(6);
-	P0_6 = 0;
+//	P0DIR |= BV(6);
+//	P0SEL &= ~BV(6);
+//	P0_6 = 0;
+
+	ther_read_zero_cal_info(&t->adc0_delta);
 }
