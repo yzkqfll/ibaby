@@ -1,4 +1,5 @@
 
+#include "bcomdef.h"
 #include "Comdef.h"
 #include "OSAL.h"
 #include <stdarg.h>
@@ -13,6 +14,7 @@
 #include "ther_adc.h"
 #include "thermometer.h"
 #include "ther_storage.h"
+#include "ther_batt_service.h"
 
 #define MODULE "[THER AT] "
 
@@ -27,6 +29,7 @@
 #define AT_ADC1 "AT+ADC1"
 #define AT_HWADC0 "AT+HWADC0"
 #define AT_HWADC1 "AT+HWADC1"
+#define AT_HWADC6 "AT+HWADC6"
 #define AT_CH0RT "AT+CH0RT"
 #define AT_CH1RT "AT+CH1RT"
 #define AT_TEMP0 "AT+CH0TEMP"
@@ -40,6 +43,10 @@
 #define AT_R25_DELTA "AT+R25_DELTA="
 #define AT_R25_DELTA_Q "AT+R25_DELTA"
 
+#define AT_BATT_ADC "AT+BATTADC"
+#define AT_BATT_VOLTAGE "AT+BATTV"
+#define AT_BATT_PERCENTAGE "AT+BATTP"
+
 #define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
 
@@ -51,9 +58,6 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 		return sprintf((char *)ret_buf, "%s\n", "OK");
 	}
 
-	/* test */
-	osal_stop_timerEx(ti->task_id, TH_TEST_EVT);
-
 	/*
 	 * stop temp measurement
 	 */
@@ -61,7 +65,6 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 	ther_temp_power_on();
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 
-//	print(LOG_DBG, MODULE "enter cal mode\n");
 	ti->mode = CAL_MODE;
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
@@ -71,13 +74,6 @@ static unsigned char at_exit_cal_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
-	if (ti->mode == NORMAL_MODE) {
-		return sprintf((char *)ret_buf, "%s\n", "Already in normal mode");
-	}
-
-	/* test */
-	osal_start_timerEx(ti->task_id, TH_TEST_EVT, AT_DELAY);
-
 	/*
 	 * stop temp measurement
 	 */
@@ -85,7 +81,6 @@ static unsigned char at_exit_cal_mode(char *ret_buf)
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	osal_start_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT, AT_DELAY);
 
-//	print(LOG_DBG, MODULE "exit cal mode\n");
 	ti->mode = NORMAL_MODE;
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
@@ -195,11 +190,37 @@ static unsigned char at_get_R25_delta(char *ret_buf)
 	return sprintf((char *)ret_buf, "+R25DELTA:%f\n", delta);
 }
 
+static unsigned char at_get_batt_adc(char *ret_buf)
+{
+	unsigned short adc = ther_batt_get_adc();
+
+	return sprintf((char *)ret_buf, "+BATTADC:%d\n", adc);
+}
+
+static unsigned char at_get_batt_voltage(char *ret_buf)
+{
+	float voltage = ther_batt_get_voltage();
+
+	return sprintf((char *)ret_buf, "+BATTVOLTAGE:%.2f V\n", voltage);
+}
+
+static unsigned char at_get_batt_percentage(char *ret_buf)
+{
+	unsigned char percentage = ther_batt_get_percentage();
+
+	return sprintf((char *)ret_buf, "+BATT:%d%%\n", percentage);
+}
+
 static void at_test(void)
 {
+	struct ther_info *ti = get_ti();
+
+	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);
+
 //	print(LOG_INFO, "P0INP 0x%x, P2INP 0x%x\n", P0INP, P2INP);
 
-	ther_storage_test();
+//	ther_storage_test();
+//	while (1);
 }
 
 static void at_help(void)
@@ -282,6 +303,10 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	} else if (strcmp((char *)cmd_buf, AT_HWADC1) == 0) {
 		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_1);
 
+	/* AT+HWADC6 */
+	} else if (strcmp((char *)cmd_buf, AT_HWADC6) == 0) {
+		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_6);
+
 	/* AT+CH0RT */
 	} else if (strcmp((char *)cmd_buf, AT_CH0RT) == 0) {
 		*ret_len = at_get_ch_Rt(ret_buf, HAL_ADC_CHANNEL_0);
@@ -336,6 +361,18 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	/* AT+R25_DELTA= */
 	} else if (strcmp((char *)cmd_buf, AT_R25_DELTA_Q) == 0) {
 		*ret_len = at_get_R25_delta(ret_buf);
+
+	/* AT+BATTADC */
+	} else if (strcmp((char *)cmd_buf, AT_BATT_ADC) == 0) {
+		*ret_len = at_get_batt_adc(ret_buf);
+
+	/* AT+BATTV */
+	} else if (strcmp((char *)cmd_buf, AT_BATT_VOLTAGE) == 0) {
+		*ret_len = at_get_batt_voltage(ret_buf);
+
+	/* AT+BATTP */
+	} else if (strcmp((char *)cmd_buf, AT_BATT_PERCENTAGE) == 0) {
+		*ret_len = at_get_batt_percentage(ret_buf);
 
 	} else {
 		at_help();
