@@ -130,6 +130,14 @@ enum {
 	#define SET_CHARGE_PUMP(x) ((1 << 4) | (x) << 2)
 
 
+struct ther_oled9639_drv {
+	unsigned char contrast;
+};
+
+static struct ther_oled9639_drv oled9639_drv = {
+	.contrast = 0xCF
+};
+
 /*
  * Send command to OLED
  * slave addr + type + cmd
@@ -469,8 +477,17 @@ void oled_drv_charge_pump_disable(void)
 
 }
 
+void oled_drv_set_contrast(unsigned char contrast)
+{
+	struct ther_oled9639_drv *od = &oled9639_drv;
+
+	od->contrast = contrast;
+}
+
 void oled_drv_init_device(void)
 {
+	struct ther_oled9639_drv *od = &oled9639_drv;
+
 	set_display_onoff(DISPLAY_OFF);
 
 	set_charge_pump(CHARGE_PUMP_ENABLE);
@@ -493,7 +510,7 @@ void oled_drv_init_device(void)
 	set_com_remap(COM_REMAP_ENABLE); /* yuanjie: COM_REMAP_ENABLE */
 	set_com_config(COM_CONFIG(ALTERNATIVE_COM_CONFIG, DISABLE_COM_REMAP));
 
-	set_contrast(0xCF);
+	set_contrast(od->contrast);
 
 //	set_charge_pump(CHARGE_PUMP_ENABLE);
 //	set_precharge_period(0xD2); // yuanjie: 0xf1

@@ -15,6 +15,7 @@
 #include "thermometer.h"
 #include "ther_storage.h"
 #include "ther_batt_service.h"
+#include "ther_oled9639_drv.h"
 
 #define MODULE "[THER AT] "
 
@@ -46,6 +47,8 @@
 #define AT_BATT_ADC "AT+BATTADC"
 #define AT_BATT_VOLTAGE "AT+BATTV"
 #define AT_BATT_PERCENTAGE "AT+BATTP"
+
+#define AT_OLED_CONTRAST "AT+CONTRAST="
 
 #define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
@@ -221,6 +224,13 @@ static unsigned char at_get_batt_percentage(char *ret_buf)
 	return sprintf((char *)ret_buf, "+BATT:%d%%\n", percentage);
 }
 
+static unsigned char at_set_oled9639_contrast(char *ret_buf, unsigned char contrast)
+{
+	oled_drv_set_contrast(contrast);
+
+	return sprintf((char *)ret_buf, "OK\n");
+}
+
 static void at_test(void)
 {
 	struct ther_info *ti = get_ti();
@@ -383,6 +393,15 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	/* AT+BATTP */
 	} else if (strcmp((char *)cmd_buf, AT_BATT_PERCENTAGE) == 0) {
 		*ret_len = at_get_batt_percentage(ret_buf);
+
+	/* AT+CONTRAST=x */
+	} else if (strncmp((char *)cmd_buf, AT_OLED_CONTRAST, strlen(AT_OLED_CONTRAST)) == 0) {
+		unsigned char contrast;
+
+		p = cmd_buf + strlen(AT_OLED_CONTRAST);
+		contrast =  atoi(p);
+
+		*ret_len = at_set_oled9639_contrast(ret_buf, contrast);
 
 	} else {
 		at_help();
