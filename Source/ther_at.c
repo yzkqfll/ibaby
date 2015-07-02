@@ -58,6 +58,8 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 		return sprintf((char *)ret_buf, "%s\n", "OK");
 	}
 
+	ti->mode = CAL_MODE;
+
 	/*
 	 * stop temp measurement
 	 */
@@ -65,7 +67,10 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 	ther_temp_power_on();
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 
-	ti->mode = CAL_MODE;
+	/*
+	 * stop batt measurement
+	 */
+	osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
@@ -75,11 +80,16 @@ static unsigned char at_exit_cal_mode(char *ret_buf)
 	struct ther_info *ti = get_ti();
 
 	/*
-	 * stop temp measurement
+	 * start temp measurement
 	 */
 	ther_temp_power_off();
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	osal_start_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT, AT_DELAY);
+
+	/*
+	 * start batt measurement
+	 */
+	osal_start_timerEx(ti->task_id, TH_BATT_EVT, AT_DELAY);
 
 	ti->mode = NORMAL_MODE;
 
