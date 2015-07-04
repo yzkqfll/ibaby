@@ -177,7 +177,7 @@ static void show_time(bool show, unsigned short time)
 		oled_drv_write_block(0, 2, 37, 43, colon_16x6);
 
 		oled_drv_write_block(0, 2, 44, 54, number_16x10[minute / 10]);
-		oled_drv_write_block(0, 2, 54, 64, number_16x10[minute / 10]);
+		oled_drv_write_block(0, 2, 54, 64, number_16x10[minute % 10]);
 	} else {
 		oled_drv_fill_block(0, 2, 15, 64, 0);
 	}
@@ -361,6 +361,8 @@ void oled_show_picture(struct display_param *param)
 	case OLED_PICTURE2:
 		break;
 
+	default:
+		break;
 	}
 
 	od->picture = param->picture;

@@ -21,6 +21,7 @@
 #include "OSAL_Clock.h"
 
 #include "ther_batt_service.h"
+#include "ther_private_service.h"
 
 #include "ther_uart.h"
 
@@ -32,6 +33,9 @@
 
 struct ble_info {
 	uint8 task_id;
+
+	void (*handle_ts_event)(unsigned char event);
+	void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len);
 
 	uint16 gap_handle;
 	gaprole_States_t gap_role_state;
@@ -203,49 +207,8 @@ static void ble_gaprole_state_change(gaprole_States_t new_state)
 static void ble_thermometer_service(uint8 event)
 {
 	struct ble_info *bi = &ble_info;
-	struct ble_gatt_access_msg *msg;
 
-	msg = (struct ble_gatt_access_msg *)osal_msg_allocate(sizeof(struct ble_gatt_access_msg));
-	if (!msg) {
-		print(LOG_INFO, MODULE "fail to allocate <struct ble_msg>\n");
-		return;
-	}
-
-	msg->hdr.event = BLE_GATT_ACCESS_EVENT;
-
-	switch (event) {
-		case THERMOMETER_TEMP_IND_ENABLED:
-			msg->type = GATT_TEMP_IND_ENABLED;
-			break;
-
-		case  THERMOMETER_TEMP_IND_DISABLED:
-			msg->type = GATT_TEMP_IND_DISABLED;
-			break;
-
-		case THERMOMETER_IMEAS_NOTI_ENABLED:
-			msg->type = GATT_IMEAS_NOTI_ENABLED;
-			break;
-
-		case  THERMOMETER_IMEAS_NOTI_DISABLED:
-			msg->type = GATT_IMEAS_NOTI_DISABLED;
-			break;
-
-		case THERMOMETER_INTERVAL_IND_ENABLED:
-			msg->type = GATT_INTERVAL_IND_ENABLED;
-			break;
-
-		case THERMOMETER_INTERVAL_IND_DISABLED:
-			msg->type = GATT_INTERVAL_IND_DISABLED;
-			break;
-
-		default:
-			msg->type = GATT_UNKNOWN;
-			break;
-	}
-
-	osal_msg_send(bi->task_id, (uint8 *)msg);
-
-	return;
+	bi->handle_ts_event(event);
 }
 
 // GAP Role Callbacks
@@ -389,13 +352,31 @@ static void ble_init_batt_service(void)
 	Batt_AddService();
 }
 
-unsigned char ther_ble_init(uint8 task_id)
+void ble_private_service(uint8 event, uint8 *data, uint8 *len)
+{
+	struct ble_info *bi = &ble_info;
+
+	bi->handle_ps_event(event, data, len);
+
+	return;
+}
+
+static void ble_init_private_service(void)
+{
+	ther_add_private_service(GATT_ALL_SERVICES, ble_private_service);
+}
+
+unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char event),
+		void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len))
 {
 	struct ble_info *bi = &ble_info;
 
 	print(LOG_INFO, MODULE "ble init\n");
 
 	bi->task_id = task_id;
+
+	bi->handle_ts_event = handle_ts_event;
+	bi->handle_ps_event = handle_ps_event;
 
 	/* init param */
 	bi->advertising_enable = TRUE;
@@ -424,6 +405,7 @@ unsigned char ther_ble_init(uint8 task_id)
 
 	ble_init_thermometer_service();
 	ble_init_batt_service();
+	ble_init_private_service();
 
 	ble_start();
 

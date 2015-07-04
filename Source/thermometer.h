@@ -108,6 +108,10 @@ struct ther_info {
 
 	/* batt */
 	unsigned char batt_percentage;
+
+	/* private service */
+	unsigned char warning_enabled;
+	unsigned short high_temp; /* high warning temp */
 };
 extern struct ther_info ther_info;
 

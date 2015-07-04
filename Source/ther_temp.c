@@ -259,7 +259,7 @@ unsigned short ther_get_temp(void)
 	struct ther_temp *t = &ther_temp;
 	unsigned short temp; /* 377 => 37.7 Celsius */
 
-	t->channel = HAL_ADC_CHANNEL_1;
+	t->channel = HAL_ADC_CHANNEL_0;
 	temp = ther_get_ch_temp_print(t->channel);
 
 	if ((t->channel == HAL_ADC_CHANNEL_1) && (temp > CH0_TEMP_MIN + TEMP_MARGIN)) {

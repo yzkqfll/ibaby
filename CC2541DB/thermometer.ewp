@@ -1169,6 +1169,12 @@
       <name>$PROJ_DIR$\..\Source\ther_oled9639_drv.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_private_service.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_private_service.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_service.c</name>
     </file>
     <file>

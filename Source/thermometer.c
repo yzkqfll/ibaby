@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "bcomdef.h"
 #include "OSAL.h"
 #include "OSAL_PwrMgr.h"
@@ -37,6 +39,7 @@
 #include "ther_at.h"
 #include "ther_misc.h"
 #include "ther_batt_service.h"
+#include "ther_private_service.h"
 
 #define MODULE "[THER] "
 
@@ -81,7 +84,7 @@ struct ther_info ther_info;
 /*
  * Batt
  */
-#define BATT_MEASURE_INTERVAL 30000
+#define BATT_MEASURE_INTERVAL 60000
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -110,7 +113,7 @@ static void encap_first_picture_param(struct ther_info *ti, struct display_param
 	UTCTimeStruct utc;
 
 	osal_ConvertUTCTime(&utc, osal_getClock());
-	time = (unsigned short)utc.hour << 8 | utc.minutes;
+	time = ((unsigned short)utc.hour << 8) | utc.minutes;
 
 	param->picture = OLED_PICTURE1;
 	param->remain_ms = DISPLAY_TIME;
@@ -175,55 +178,112 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 }
 
 
-static void ther_handle_gatt_access_msg(struct ther_info *ti, struct ble_gatt_access_msg *msg)
+static void ther_handle_ts_event(unsigned char event)
 {
-	switch (msg->type) {
+	struct ther_info *ti = &ther_info;
 
-	case GATT_TEMP_IND_ENABLED:
-		print(LOG_INFO, MODULE "start temp indication\n");
+	switch (event) {
+
+	case THERMOMETER_TEMP_IND_ENABLED:
+		print(LOG_INFO, MODULE "enable temp indication\n");
 
 		ti->temp_indication_enable = TRUE;
 		ti->indication_interval = 5;
 
 		break;
 
-	case GATT_TEMP_IND_DISABLED:
-		print(LOG_INFO, MODULE "stop temp indication\n");
+	case THERMOMETER_TEMP_IND_DISABLED:
+		print(LOG_INFO, MODULE "disable temp indication\n");
 
 		ti->temp_indication_enable = FALSE;
 
 		break;
 
-	case GATT_IMEAS_NOTI_ENABLED:
-		print(LOG_INFO, MODULE "start imeas notification\n");
+	case THERMOMETER_IMEAS_NOTI_ENABLED:
+		print(LOG_INFO, MODULE "enable imeas notification\n");
 
 		ti->temp_notification_enable = TRUE;
 		ti->notification_interval = 5;
 
 		break;
 
-	case GATT_IMEAS_NOTI_DISABLED:
-		print(LOG_INFO, MODULE "stop imeas notification\n");
+	case THERMOMETER_IMEAS_NOTI_DISABLED:
+		print(LOG_INFO, MODULE "disable imeas notification\n");
 		ti->temp_notification_enable = FALSE;
 
 		break;
 
-	case GATT_INTERVAL_IND_ENABLED:
-		print(LOG_INFO, MODULE "start interval indication\n");
+	case THERMOMETER_INTERVAL_IND_ENABLED:
+		print(LOG_INFO, MODULE "enable interval indication\n");
 
 		break;
 
-	case GATT_INTERVAL_IND_DISABLED:
-		print(LOG_INFO, MODULE "stop interval indication\n");
+	case THERMOMETER_INTERVAL_IND_DISABLED:
+		print(LOG_INFO, MODULE "disable interval indication\n");
 
 		break;
 
-	case GATT_UNKNOWN:
-		print(LOG_INFO, MODULE "unknown gatt access type\n");
+	default:
+		print(LOG_INFO, MODULE "unknown temp event\n");
 		break;
 	}
 
 	return;
+}
+
+static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsigned char *len)
+{
+	struct ther_info *ti = &ther_info;
+	UTCTimeStruct utc;
+
+	switch (event) {
+	case THER_PS_GET_WARNING_ENABLED:
+		*data = ti->warning_enabled;
+		*len = 1;
+		print(LOG_DBG, MODULE "get warning enabled: %d\n", *data);
+		break;
+
+	case THER_PS_SET_WARNING_ENABLED:
+		ti->warning_enabled = *data;
+		print(LOG_DBG, MODULE "set warning enabled: %d\n", *data);
+		break;
+
+	case THER_PS_CLEAR_WARNING:
+		print(LOG_DBG, MODULE "clear warning: %d\n", *data);
+		// TODO
+		break;
+
+	case THER_PS_GET_HIGH_WARN_TEMP:
+		memcpy(data, &ti->high_temp, sizeof(ti->high_temp));
+		*len = sizeof(ti->high_temp);
+		print(LOG_DBG, MODULE "get high temp: %d\n", *(unsigned short *)data);
+		break;
+
+	case THER_PS_SET_HIGH_WARN_TEMP:
+		memcpy(&ti->high_temp, data, sizeof(ti->high_temp));
+		print(LOG_DBG, MODULE "set high temp: %d\n", *(unsigned short *)data);
+		break;
+
+	case THER_PS_GET_TIME:
+		osal_ConvertUTCTime(&utc, osal_getClock());
+
+		memcpy(data, &utc, sizeof(utc));
+		*len = sizeof(utc);
+		print(LOG_DBG, MODULE "get time: %d-%02d-%02d %02d:%02d:%02d\n",
+				utc.year, utc.month, utc.day, utc.hour, utc.minutes, utc.seconds);
+		break;
+
+	case THER_PS_SET_TIME:
+		memcpy(&utc, data, sizeof(utc));
+		osal_setClock(osal_ConvertUTCSecs(&utc));
+		print(LOG_DBG, MODULE "set time: %d-%02d-%02d %02d:%02d:%02d\n",
+				utc.year, utc.month, utc.day, utc.hour, utc.minutes, utc.seconds);
+		break;
+
+	default:
+		*len = 0;
+		break;
+	}
 }
 
 static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_status_change_msg *msg)
@@ -248,10 +308,6 @@ static void ther_dispatch_msg(struct ther_info *ti, osal_event_hdr_t *msg)
 
 	case GATT_MSG_EVENT:
 		ther_handle_gatt_msg((gattMsgEvent_t *)msg);
-		break;
-
-	case BLE_GATT_ACCESS_EVENT:
-		ther_handle_gatt_access_msg(ti, (struct ble_gatt_access_msg *)msg);
 		break;
 
 	case BLE_STATUS_CHANGE_EVENT:
@@ -320,7 +376,12 @@ static void ther_device_init(struct ther_info *ti)
 	ther_temp_init();
 
 	/* ble init */
-	ther_ble_init(ti->task_id);
+	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event);
+
+//	HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );
+
+	// Enable stack to toggle bypass control on TPS62730 (DC/DC converter)
+//	HCI_EXT_MapPmIoPortCmd( HCI_EXT_PM_IO_PORT_P0, HCI_EXT_PM_IO_PORT_PIN7 );
 }
 
 static void ther_device_exit_pre(struct ther_info *ti)
@@ -507,8 +568,8 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 					music = FALSE;
 				}
 
-				if (music)
-					ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);
+/*				if (music)
+					ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);*/
 			} else {
 				// TODO: save to local
 			}
