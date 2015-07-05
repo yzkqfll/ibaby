@@ -210,7 +210,7 @@ static void show_temp(bool show, unsigned short temp)
 	decimal = temp % 10;
 
 	if (show) {
-		oled_drv_write_block(2, 5, 10, 23, number_24x13[ten_digit]);
+		oled_drv_write_block(2, 5, 10, 23, number_24x13[ten_digit % 10]);
 		oled_drv_write_block(2, 5, 23, 36, number_24x13[single_digit]);
 
 		oled_drv_write_block(2, 5, 39, 47, dot_24x8[0]);
@@ -281,7 +281,6 @@ static void oled_display_draw_picture(struct oled_display *od)
 		break;
 
 	case OLED_PICTURE1:
-
 		show_time(TRUE, od->time);
 
 		if (od->ble_link == LINK_ON)
