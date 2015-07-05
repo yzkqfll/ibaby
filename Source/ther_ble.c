@@ -33,7 +33,6 @@
 #include "ther_service.h"
 #include "devinfoservice.h"
 #include "thermometer.h"
-#include "timeapp.h"
 #include "OSAL_Clock.h"
 
 #include "ther_batt_service.h"

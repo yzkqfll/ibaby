@@ -373,7 +373,7 @@ static void ther_device_init(struct ther_info *ti)
 	ther_uart_init(UART_PORT_0, UART_BAUD_RATE_115200, ther_at_handle);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "-------------------------------------\n");
-	print(LOG_INFO, "  Firmware version %d.%d\n",
+	print(LOG_INFO, "  Firmware V%d.%d\n",
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION);
 	print(LOG_INFO, "      %s, %s\n",
 			__DATE__, __TIME__);
