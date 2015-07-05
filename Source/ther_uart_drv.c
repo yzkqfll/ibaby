@@ -1,5 +1,15 @@
-
 /*
+ * THER UART DRIVER
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
  *
  */
 
@@ -119,7 +129,7 @@ int uart_drv_init(unsigned char port, unsigned char baud_rate,
 	 * ensure the uart0 is working fine
 	 */
 #if defined(POWER_SAVING)
-	U0UCR &= ~0x40;
+	U0UCR &= ~BV(6);
 #endif
 
 	return 0;

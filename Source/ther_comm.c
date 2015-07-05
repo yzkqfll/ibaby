@@ -1,3 +1,18 @@
+/*
+ * THER Communication
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
+
 
 #include "bcomdef.h"
 #include "OSAL.h"
@@ -18,7 +33,6 @@
 #include "ther_service.h"
 #include "devinfoservice.h"
 #include "thermometer.h"
-#include "timeapp.h"
 #include "OSAL_Clock.h"
 
 #include "ther_uart.h"
@@ -119,7 +133,7 @@ void ther_handle_gatt_msg(gattMsgEvent_t *msg)
 	if (msg->method == ATT_HANDLE_VALUE_NOTI ||
 			msg->method == ATT_HANDLE_VALUE_IND )
 	{
-		timeAppIndGattMsg( msg );
+//		timeAppIndGattMsg( msg );
 	}
 	else if ( msg->method == ATT_READ_RSP ||
 			msg->method == ATT_WRITE_RSP )

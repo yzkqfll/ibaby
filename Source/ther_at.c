@@ -1,3 +1,17 @@
+/*
+ * THER AT COMMAND
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
 
 #include "bcomdef.h"
 #include "Comdef.h"
@@ -16,6 +30,8 @@
 #include "ther_storage.h"
 #include "ther_batt_service.h"
 #include "ther_oled9639_drv.h"
+#include "ther_port.h"
+#include "ther_misc.h"
 
 #define MODULE "[THER AT] "
 
@@ -235,9 +251,11 @@ static void at_test(void)
 {
 	struct ther_info *ti = get_ti();
 
-	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);
+	short delta;
 
-//	print(LOG_INFO, "P0INP 0x%x, P2INP 0x%x\n", P0INP, P2INP);
+
+	ther_read_zero_cal_info(&delta);
+	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
 
 //	ther_storage_test();
 //	while (1);
@@ -245,8 +263,58 @@ static void at_test(void)
 
 static void at_help(void)
 {
-	print(LOG_INFO, "Unknown AT command\n");
+	print(LOG_INFO, "--------------------------\n");
 
+	print(LOG_INFO, "    AT\n");
+	print(LOG_INFO, "    AT+MODE=\n");
+	print(LOG_INFO, "    AT+MODE\n");
+	print(LOG_INFO, "    AT+LDO=\n");
+	print(LOG_INFO, "    AT+LDO\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+ADC0\n");
+	print(LOG_INFO, "    AT+ADC1\n");
+	print(LOG_INFO, "    AT+HWADC0\n");
+	print(LOG_INFO, "    AT+HWADC1\n");
+	print(LOG_INFO, "    AT+HWADC6\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+CH0RT\n");
+	print(LOG_INFO, "    AT+CH1RT\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+CH0TEMP\n");
+	print(LOG_INFO, "    AT+CH1TEMP\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+ADC0DELTA=\n");
+	print(LOG_INFO, "    AT+ADC0DELTA\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+BDELTA=\n");
+	print(LOG_INFO, "    AT+BDELTA\n");
+	print(LOG_INFO, "    AT+R25_DELTA=\n");
+	print(LOG_INFO, "    AT+R25_DELTA\n");
+	print(LOG_INFO, "    AT+BDELTA=\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+BATTADC\n");
+	print(LOG_INFO, "    AT+BATTV\n");
+	print(LOG_INFO, "    AT+BATTP\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+CONTRAST=\n");
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "--------------------------\n");
+	print(LOG_INFO, "\n");
 }
 
 void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)

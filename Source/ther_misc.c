@@ -1,8 +1,21 @@
+/*
+ * THER MISC
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/07/05 - Add delay function
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
 
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_board.h"
-
 #include "ther_uart.h"
 
 #include "thermometer.h"
@@ -37,4 +50,14 @@ void feed_watchdog(void)
 {
 	WDCTL = 0xA0;
 	WDCTL = 0x50;
+}
+
+void delay(uint32 cnt)
+{
+	volatile unsigned char a;
+
+	for(uint32 i = 0; i < cnt; i++) {
+		a = 1;
+		asm("NOP");
+	}
 }
