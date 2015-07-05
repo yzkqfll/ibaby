@@ -1,9 +1,16 @@
 /*
- * spi flash w25x device driver
+ * THER w25x40cl SPI DRIVER
  *
- * Change Log:
- * =======================
- * 6Jun15, yue.hu, created for w25x40cl
+ * Copyright (c) 2015 by yue.hu <zbestahu@aliyun.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/20 - Init version
+ *              by yue.hu <zbestahu@aliyun.com>
+ *
  */
 
 #include "comdef.h"
@@ -12,7 +19,7 @@
 #include "ther_uart.h"
 #include "ther_spi_drv.h"
 #include "ther_spi_w25x40cl.h"
-
+#include "ther_port.h"
 
 #define MODULE  "[THER W25X] "
 #define W25X_DEBUG
@@ -172,6 +179,8 @@ static int8 w25x_flash_open(void)
 {
 	uint8 send_buffer[2];
 
+	power_on_boost();
+
 	w25x_write_enable();
 
 	send_buffer[0] = CMD_WRSR;
@@ -185,6 +194,8 @@ static int8 w25x_flash_open(void)
 
 static int8 w25x_flash_close(void)
 {
+	power_off_boost();
+
 	return MTD_OK;
 }
 

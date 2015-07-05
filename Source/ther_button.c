@@ -1,3 +1,18 @@
+/*
+ * THER BUTTON
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
+
 
 #include "Comdef.h"
 #include "OSAL.h"
@@ -7,17 +22,9 @@
 
 #include "thermometer.h"
 #include "ther_button.h"
+#include "ther_port.h"
 
 #define MODULE "[THER BUTTON] "
-
-
-/*
- * P1.3 used as power key
- */
-#define PUSH_BUTTON_PIN P1_3
-#define PUSH_BUTTON_BIT 3
-
-#define P1ICONL_BIT 1
 
 #define BUTTON_MEASURE_INTERVAL 20
 
@@ -39,7 +46,7 @@ void ther_measure_button_time(void)
 
 	bt->eclipse_ms += BUTTON_MEASURE_INTERVAL;
 
-	if (bt->eclipse_ms > LONG_PRESS_TIME || (PUSH_BUTTON_PIN == 0)) {
+	if (bt->eclipse_ms > LONG_PRESS_TIME || (P1_BUTTON_PIN == 0)) {
 		if (bt->eclipse_ms < SHORT_PRESS_TIME) {
 			/*
 			 * ignore debounce of the button
@@ -81,28 +88,6 @@ void ther_button_init(unsigned char task_id)
 
 	bt->task_id = task_id;
 
-	/*
-	 * P1.3 is push button
-	 *   gpio, output, interrupt triggered(Port 1 vector), rising edge
-	 */
-
-	/* GPIO, and as input */
-	P1SEL &= ~BV(PUSH_BUTTON_BIT);
-	P1DIR &= ~BV(PUSH_BUTTON_BIT);
-
-	/* 3-state */
-	P1INP |= BV(PUSH_BUTTON_BIT);
-
-	/* rising edge */
-	PICTL &= ~BV(P1ICONL_BIT);
-
-	/* Port 1 interrupt enable */
-	IEN2 |= BV(4);
-
-	/* enable P1.3 interrupt and clear the status flag */
-	P1IEN |= BV(PUSH_BUTTON_BIT);
-	P1IFG &= ~BV(PUSH_BUTTON_BIT);
-
 }
 
 /*
@@ -113,10 +98,10 @@ HAL_ISR_FUNCTION(button_isr, P1INT_VECTOR)
 {
 	HAL_ENTER_ISR();
 
-	if (P1IFG & BV(PUSH_BUTTON_BIT)) {
+	if (P1IFG & BV(P1_BUTTON_BIT)) {
 		struct ther_button *bt = &ther_button;
 
-		P1IFG &= ~BV(PUSH_BUTTON_BIT);
+		P1IFG &= ~BV(P1_BUTTON_BIT);
 
 		osal_stop_timerEx(bt->task_id, TH_BUTTON_EVT);
 		osal_start_timerEx(bt->task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);

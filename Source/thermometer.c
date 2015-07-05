@@ -1,3 +1,17 @@
+/*
+ * THER MAIN
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
 
 #include <string.h>
 
@@ -20,7 +34,6 @@
 #include "ther_service.h"
 #include "devinfoservice.h"
 #include "thermometer.h"
-#include "timeapp.h"
 #include "OSAL_Clock.h"
 
 #include "config.h"
@@ -40,6 +53,7 @@
 #include "ther_misc.h"
 #include "ther_batt_service.h"
 #include "ther_private_service.h"
+#include "ther_port.h"
 
 #define MODULE "[THER] "
 
@@ -352,13 +366,23 @@ static void ther_display_event_report(unsigned char event, unsigned short param)
 
 static void ther_device_init(struct ther_info *ti)
 {
+	/* all gpio init */
+	ther_port_init();
+
 	/* uart init */
 	ther_uart_init(UART_PORT_0, UART_BAUD_RATE_115200, ther_at_handle);
-	print(LOG_INFO, "\n\n");
-	print(LOG_INFO, "--------------\n");
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "-------------------------------------\n");
 	print(LOG_INFO, "  Firmware version %d.%d\n",
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION);
-	print(LOG_INFO, "--------------\n");
+	print(LOG_INFO, "      %s, %s\n",
+			__DATE__, __TIME__);
+
+	delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "  Copyright (c) 2015 59089403@qq.com\r\n");
+	print(LOG_INFO, "  All rights reserved.\r\n");
+	print(LOG_INFO, "-------------------------------------\r\n");
 
 	/* button init */
 	ther_button_init(ti->task_id);

@@ -1,5 +1,16 @@
 /*
- * Copyright
+ * THER BUZZER
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
  */
 
 #include "Comdef.h"
@@ -11,6 +22,7 @@
 #include "hal_board.h"
 #include "ther_buzzer.h"
 #include "thermometer.h"
+#include "ther_port.h"
 
 #define MODULE "[BUZZER] "
 
@@ -31,12 +43,6 @@
  * Chapter 7.2   Low I/O Supply Voltage
  *
  */
-
-/*
- * timer 4
- */
-#define BUZZER_PIN P1_0
-#define BUZZER_BIT 0  /* P1.0 */
 
 /* Defines for Timer 4 */
 #define HAL_T4_CC0_VALUE                125   /* provides pulse width of 125 usec */
@@ -116,7 +122,7 @@ static void start_buzzer(unsigned char tone)
  */
 static void stop_buzzer(void)
 {
-	BUZZER_PIN = 0;
+	P1_BUZZER_PIN = 0;
 
 	/* Setting T4CTL to 0 disables it and masks the overflow interrupt */
 	T4CTL = 0;
@@ -182,11 +188,5 @@ void ther_buzzer_init(unsigned char task_id)
 
 	b->task_id = task_id;
 
-	BUZZER_PIN = 0;
-
-	/* dir: output */
-	P1DIR |= BV(BUZZER_BIT);
-
-	/* as peripheral */
-	P1SEL |= BV(BUZZER_BIT);
+	P1_BUZZER_PIN = 0;
 }

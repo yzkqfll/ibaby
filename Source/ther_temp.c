@@ -1,3 +1,17 @@
+/*
+ * THER TEMP
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
 
 #include "Comdef.h"
 #include "OSAL.h"
@@ -128,10 +142,8 @@ unsigned short ther_get_hw_adc(unsigned char ch)
 {
 	unsigned short adc = 0;
 
-//	P0_6 = 1;
 	if (ch <= HAL_ADC_CHANNEL_7)
 		adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
-//	P0_6 = 0;
 
 	return adc;
 }
@@ -280,34 +292,6 @@ void ther_temp_init(void)
 
 	t->channel = HAL_ADC_CHANNEL_1;
 
-	/*
-	 * init adc pins:
-	 *   P2.3:  LDO enable pin
-	 *   P0.7:  reference voltage
-	 *   P0.0:  high resolution adc pin
-	 *   P0.1:  low resolution adc pin
-	 */
-
-	/*
-	 * P2.3: gpio, output
-	 *
-	 * P2.3 is mulplex with XOSC32K, so if we want to use it as gpio,
-	 * we need set OSC32K_INSTALLED=FALSE in IAR options.
-	 *
-	 * see datasheet <7.8 32-kHz XOSC Input>
-	 */
-	P2SEL &= ~BV(1); /* P2.3 function select: GPIO */
-	P2DIR |= BV(LDO_ENABLE_BIT); /* P2.3 as output */
-
-	/* P0.7, P0.0, P0.1: input, 3-state */
-	P0SEL |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
-	/* override P0SEL */
-	APCFG |= (BV(ADC_REF_VOLTAGE_BIT) | BV(ADC_HIGH_RRECISION_BIT) | BV(ADC_LOW_PRECISION_BIT));
-
-	/* For Jerry test: P0.6 */
-//	P0DIR |= BV(6);
-//	P0SEL &= ~BV(6);
-//	P0_6 = 0;
-
 	ther_read_zero_cal_info(&t->adc0_delta);
+	print(LOG_INFO, MODULE "ADC0 delta %d\n", t->adc0_delta);
 }

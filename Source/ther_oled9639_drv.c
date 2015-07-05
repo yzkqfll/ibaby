@@ -1,3 +1,17 @@
+/*
+ * THER OLED DRIVER
+ *
+ * Copyright (c) 2015 by Leo Liu <59089403@qq.com>.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/01 - Init version
+ *              by Leo Liu <59089403@qq.com>
+ *
+ */
 
 #include "osal.h"
 
@@ -6,20 +20,9 @@
 #include "ther_uart.h"
 
 #include "ther_oled9639_drv.h"
+#include "ther_port.h"
 
 #define MODULE "[OLED DRV] "
-
-/*
- * P1.2 : bootst-en pin
- */
-#define BOOST_EN_PIN_VAL P1_2
-#define BOOST_EN_PIN 2
-
-/*
- * P2.0 : VDD enable
- */
-#define VDD_EN_PIN_VAL P2_0
-#define VDD_EN_PIN 0
 
 #define OLED_IIC_ADDR 0x3C
 
@@ -368,7 +371,7 @@ enum {
  */
 static void set_vcc_power(unsigned char val)
 {
-	BOOST_EN_PIN_VAL = val;
+	P1_BOOST_EN_PIN = val;
 }
 
 enum {
@@ -380,7 +383,7 @@ enum {
  */
 static void set_vdd_power(unsigned char val)
 {
-	VDD_EN_PIN_VAL = val;
+	P2_OLED_VDDEN_PIN = val;
 }
 
 void oled_drv_display_on(void)
@@ -405,12 +408,14 @@ void oled_drv_power_off_vdd(void)
 
 void oled_drv_power_on_vcc(void)
 {
-	set_vcc_power(VCC_POWER_ON);
+//	set_vcc_power(VCC_POWER_ON);
+	power_on_boost();
 }
 
 void oled_drv_power_off_vcc(void)
 {
-	set_vcc_power(VCC_POWER_OFF);
+//	set_vcc_power(VCC_POWER_OFF);
+	power_off_boost();
 }
 
 void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,
@@ -522,37 +527,12 @@ void oled_drv_init_device(void)
 	oled_drv_fill_screen(0x0);
 }
 
-static void init_gpio(void)
-{
-	/*
-	 * VBOOST enable pin setup
-	 * p1.2
-	 */
-	P1SEL &= ~(1 << BOOST_EN_PIN);
-	P1DIR |= 1 << BOOST_EN_PIN;
-
-	/*
-	 * VDD enable pin setup
-	 * p2.0
-	 */
-	P2SEL &= ~BV(VDD_EN_PIN);
-	P2DIR |= BV(VDD_EN_PIN);
-}
-
-static void reset_gpio(void)
-{
-
-}
-
 void oled_drv_init(void)
 {
-	init_gpio();
-
 	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
 }
 
 void oled_drv_exit(void)
 {
-	reset_gpio();
 }
 

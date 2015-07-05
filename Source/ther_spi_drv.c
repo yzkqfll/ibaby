@@ -1,9 +1,16 @@
 /*
- * TI CC254X SPI driver using I/O pin
+ * THER SPI DRIVER
  *
- * Change Log:
- * =======================
- * 6Jun15, yue.hu, created.
+ * Copyright (c) 2015 by yue.hu <zbestahu@aliyun.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License or (at your optional) any later version of the license.
+ *
+ * 2015/06/20 - Init version
+ *              by yue.hu <zbestahu@aliyun.com>
+ *
  */
 
 #include "Comdef.h"
@@ -13,18 +20,15 @@
 #include "ther_uart.h"
 
 #include "ther_spi_drv.h"
+#include "ther_port.h"
 
 #define MODULE "[SPI] "
 
 /**
  * SPI I/O pin definitions
+ * See ther_port.[c|h]
  */
-#define SPI_PIN_CS     P1_4
-#define SPI_PIN_SCK    P1_5
-#define SPI_PIN_MOSI   P1_6
-#define SPI_PIN_MISO   P1_7
-#define SPI_PIN_WP     P2_4
-#define SPI_PIN_VCC    P1_1
+
 
 /**
  * SPI I/O operations
@@ -33,16 +37,13 @@
 #define THER_SPI_TX(x)        st(U1DBUF = (x);)
 #define THER_SPI_WAIT_RXRDY() st(while (!(U1CSR & 0x02));)
 #define THER_SPI_CLR_RXRDY()  st(U1CSR &= ~0x02;)
-#define THER_SPI_EN(x)        st(SPI_PIN_CS = (x);)
-#define THER_SPI_WP(x)        st(SPI_PIN_WP = (x);)
+#define THER_SPI_EN(x)        st(P1_SPI_CS_PIN = (x);)
+#define THER_SPI_WP(x)        st(P2_SPI_WP_PIN = (x);)
 #define THER_SPI_POWER(x)     st(SPI_PIN_VCC = (x);)
 
 
 void ther_spi_init(void)
 {
-	/* Set UART1 I/O to Alt. 2 location on P1 */
-	PERCFG |= 0x02;
-
 	/* Mode is SPI-Master Mode */
 	U1CSR = 0;
 
@@ -56,36 +57,10 @@ void ther_spi_init(void)
 	/* Set bit order to MSB */
 	U1GCR |= BV(5);
 
-	/* M1/MO/C config */
-	P1SEL |= 0xE0;
-	P1DIR |= BV(6);
-	P1DIR &= ~ BV(7);
-
-	/* Disable interrupt */
-	P1IEN &= ~BV(4);
-	P1IEN &= ~BV(5);
-	P1IEN &= ~BV(6);
-	P1IEN &= ~BV(7);
-
-	/* CS config */
-	P1SEL &= ~ BV(4);
-	P1DIR |= BV(4);
-	P1INP |= BV(4);
-
-	/* VCC config */
-	P1SEL &= ~ BV(1);
-	P1DIR |= BV(1);
-	P1INP |= BV(1);
-
-	/* WP config */
-	P2SEL &= ~ BV(2);
-	P2DIR |= BV(4);
-	P2INP |= BV(4);
-
 	/* Receiver enable */
 	U1CSR |= 0x40;
 
-	THER_SPI_POWER(1);
+//	THER_SPI_POWER(1);
 	THER_SPI_WP(0);
 	THER_SPI_EN(0);
 }
