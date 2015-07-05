@@ -1091,13 +1091,7 @@
       <name>$PROJ_DIR$\..\Source\hal_i2c.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\hal_i2c.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\OnBoard.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\OnBoard.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\OSAL_thermometer.c</name>
@@ -1106,139 +1100,67 @@
       <name>$PROJ_DIR$\..\Source\ther_adc.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_adc.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_at.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_at.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_batt_service.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_batt_service.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_ble.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_ble.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_button.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_button.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_buzzer.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_buzzer.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_comm.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_comm.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_misc.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_misc.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_mtd.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_mtd.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_oled9639_display.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_oled9639_display.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_oled9639_drv.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_oled9639_drv.h</name>
+      <name>$PROJ_DIR$\..\Source\ther_port.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_private_service.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_private_service.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_service.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_service.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_spi_drv.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_spi_drv.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_spi_w25x40cl.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_spi_w25x40cl.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_storage.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_storage.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_temp.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_temp.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_uart.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_uart.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\ther_uart_drv.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\ther_uart_drv.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\thermometer.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\thermometer.h</name>
-    </file>
-    <file>
       <name>$PROJ_DIR$\..\Source\thermometer_Main.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\timeapp.h</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\timeapp_clock.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\timeapp_config.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\timeapp_discovery.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\Source\timeapp_ind.c</name>
     </file>
   </group>
   <group>
