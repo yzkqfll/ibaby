@@ -15,7 +15,10 @@ enum {
 	THER_PS_SET_HIGH_WARN_TEMP,
 
 	THER_PS_GET_TIME,
-	THER_PS_SET_TIME
+	THER_PS_SET_TIME,
+
+	THER_PS_GET_DEBUG,
+	THER_PS_SET_DEBUG,
 };
 
 bStatus_t ther_add_private_service(uint32 services, void (*profile_change)(uint8 event, uint8 *data, uint8 *len));

@@ -59,7 +59,7 @@ static gattCharCfg_t simpleProfileChar4Config[GATT_MAX_NUM_CONN];
 #define THER_PS_CLEAR_WARNING_UUID		0xFFF2
 #define THER_PS_HIGH_TEMP_UUID			0xFFF3
 #define THER_PS_TIME_UUID				0xFFF4
-#define THER_REPORT_UUID				0xFFF5
+#define THER_PS_DEBUG_UUID				0xFFF5
 
 
 
@@ -109,6 +109,16 @@ const uint8 ther_ps_time_uuid[ATT_BT_UUID_SIZE] =
 };
 static uint8 ther_ps_time_props = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 ther_ps_time_user_desp[] = "time";
+
+/*
+ * debug
+ */
+const uint8 ther_ps_debug_uuid[ATT_BT_UUID_SIZE] =
+{
+  LO_UINT16(THER_PS_DEBUG_UUID), HI_UINT16(THER_PS_DEBUG_UUID)
+};
+static uint8 ther_ps_debug_props = GATT_PROP_READ | GATT_PROP_WRITE;
+static uint8 ther_ps_debug_user_desp[] = "debug";
 
 static gattAttribute_t ther_ps_attr_table[] = {
 	{
@@ -234,6 +244,35 @@ static gattAttribute_t ther_ps_attr_table[] = {
 				0,
 				ther_ps_time_user_desp
 			},
+
+		/*
+		 * Declaration: debug
+		 */
+
+			// properties of <time>
+			{
+				{ ATT_BT_UUID_SIZE, characterUUID},	/* 0x2804 */
+				GATT_PERMIT_READ,
+				0,
+				&ther_ps_debug_props
+			},
+
+			// value of <time>
+			{
+				{ ATT_BT_UUID_SIZE, ther_ps_debug_uuid},	/* 0xFFF4 */
+				GATT_PERMIT_READ | GATT_PERMIT_WRITE,
+				0,
+//					(unsigned char *)&ps_info.time
+				&ps_info.dummy_val
+			},
+
+			// user Description of <time>
+			{
+				{ ATT_BT_UUID_SIZE, charUserDescUUID },
+				GATT_PERMIT_READ,
+				0,
+				ther_ps_debug_user_desp
+			},
 };
 
 
@@ -304,6 +343,10 @@ static uint8 ther_ps_read_attr(uint16 connHandle, gattAttribute_t *pAttr,
 		*pLen = TIME_LEN;*/
 		ps->handle_ps_event(THER_PS_GET_TIME, pValue, pLen);
 
+		break;
+
+	case THER_PS_DEBUG_UUID:
+		ps->handle_ps_event(THER_PS_GET_DEBUG, pValue, pLen);
 		break;
 
 	default:
@@ -410,6 +453,19 @@ static bStatus_t ther_ps_write_attr(uint16 connHandle, gattAttribute_t *pAttr,
 		else {
 /*			memcpy(pAttr->pValue, pValue, len);*/
 			ps->handle_ps_event(THER_PS_SET_TIME, pValue, &len);
+		}
+		break;
+
+	case THER_PS_DEBUG_UUID:
+		/*
+		 * Validate the value. Make sure it's not a blob oper
+		 */
+		if (offset !=0)
+			status = ATT_ERR_ATTR_NOT_LONG;
+		else if (len != TIME_LEN)
+			status = ATT_ERR_INVALID_VALUE_SIZE;
+		else {
+			ps->handle_ps_event(THER_PS_SET_DEBUG, pValue, &len);
 		}
 		break;
 

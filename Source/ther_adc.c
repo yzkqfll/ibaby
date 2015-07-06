@@ -20,8 +20,9 @@
 #include "ther_uart.h"
 
 #include "ther_adc.h"
+#include "ther_port.h"
 
-#define MODULE "[ADC] "
+#define MODULE "[THER ADC] "
 
 #define HAL_ADC_EOC         0x80    /* End of Conversion bit */
 #define HAL_ADC_START       0x40    /* Starts Conversion */

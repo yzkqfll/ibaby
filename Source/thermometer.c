@@ -294,6 +294,14 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 				utc.year, utc.month, utc.day, utc.hour, utc.minutes, utc.seconds);
 		break;
 
+	case THER_PS_GET_DEBUG:
+		*(unsigned short *)data = ther_get_hw_adc(HAL_ADC_CHANNEL_0);
+		*len = 2;
+		break;
+
+	case THER_PS_SET_DEBUG:
+		break;
+
 	default:
 		*len = 0;
 		break;
@@ -691,7 +699,7 @@ void Thermometer_Init(uint8 task_id)
 
 	ti->power_mode = PM_ACTIVE;
 
-	start_watchdog_timer();
+//	start_watchdog_timer();
 	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
 
 	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
