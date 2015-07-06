@@ -19,25 +19,25 @@
 #include "hal_board.h"
 
 #include "ther_uart.h"
-
+#include "ther_uart_drv.h"
 #include "thermometer.h"
 #include "ther_button.h"
 #include "ther_port.h"
 
 #define MODULE "[THER PORT] "
 
-static unsigned char boost_cnt = 0;
+static unsigned char boost_user = 0;
 
 void power_on_boost(void)
 {
-	boost_cnt++;
+	boost_user++;
 	P1_BOOST_EN_PIN = 1;
 }
 
 void power_off_boost(void)
 {
-	boost_cnt--;
-	if (boost_cnt == 0)
+	boost_user--;
+	if (boost_user == 0)
 		P1_BOOST_EN_PIN = 0;
 }
 
@@ -112,6 +112,6 @@ void ther_port_init(void)
 
 void ther_port_exit(void)
 {
-	boost_cnt = 0;
+	boost_user = 0;
 	P1_BOOST_EN_PIN = 0;
 }

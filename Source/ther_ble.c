@@ -343,8 +343,13 @@ static void ble_init_thermometer_service(void)
 	Thermometer_AddService(GATT_ALL_SERVICES);
 }
 
-#define BATT_ADC_MIN 273 /* 2V VCC */
-#define BATT_ADC_MAX 409 /* 3V VCC*/
+/*
+ * 273 -> 2v
+ * 313 -> 2.3v
+ * 409 -> 3v
+ */
+#define BATT_ADC_MIN 313
+#define BATT_ADC_MAX 409
 
 static unsigned char ther_batt_cal_percentage(unsigned short adc)
 {
