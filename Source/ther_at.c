@@ -235,7 +235,7 @@ static unsigned char at_get_batt_voltage(char *ret_buf)
 
 static unsigned char at_get_batt_percentage(char *ret_buf)
 {
-	unsigned char percentage = ther_batt_get_percentage();
+	unsigned char percentage = ther_batt_get_percentage(TRUE);
 
 	return sprintf((char *)ret_buf, "+BATT:%d%%\n", percentage);
 }

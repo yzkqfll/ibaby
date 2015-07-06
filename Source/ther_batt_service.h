@@ -154,7 +154,7 @@ void Batt_HandleConnStatusCB( uint16 connHandle, uint8 changeType );
 
 unsigned short ther_batt_get_adc(void);
 float ther_batt_get_voltage(void);
-unsigned char ther_batt_get_percentage(void);
+unsigned char ther_batt_get_percentage(bool hw_read);
 
 /*********************************************************************
 *********************************************************************/

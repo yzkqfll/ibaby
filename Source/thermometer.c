@@ -405,7 +405,11 @@ static void ther_device_init(struct ther_info *ti)
 //	HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );
 
 	// Enable stack to toggle bypass control on TPS62730 (DC/DC converter)
-//	HCI_EXT_MapPmIoPortCmd( HCI_EXT_PM_IO_PORT_P0, HCI_EXT_PM_IO_PORT_PIN7 );
+//	HCI_EXT_MapPmIoPortCmd( HCI_EXT_PM_IO_PORT_NONE, HCI_EXT_PM_IO_PORT_PIN0 );
+
+  //the TI interface to set TXPOWER is not satisfying, so I have to
+  //set register TXPOWER myself.
+//  HCI_EXT_SetTxPowerCmd(LL_EXT_TX_POWER_0_DBM);
 }
 
 static void ther_device_exit_pre(struct ther_info *ti)
@@ -552,7 +556,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	if (events & TH_BATT_EVT) {
 		if (ti->mode == NORMAL_MODE) {
 			Batt_MeasLevel();
-			ti->batt_percentage = ther_batt_get_percentage();
+			ti->batt_percentage = ther_batt_get_percentage(FALSE);
 			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
 
 			osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);

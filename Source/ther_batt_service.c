@@ -548,9 +548,12 @@ float ther_batt_get_voltage(void)
 	return voltage;
 }
 
-unsigned char ther_batt_get_percentage(void)
+unsigned char ther_batt_get_percentage(bool hw_read)
 {
-	return battLevel;
+	if (hw_read)
+		return battMeasure();
+	else
+		return battLevel;
 }
 
 /*
