@@ -103,7 +103,7 @@ void ther_port_init(void)
 
 	P2SEL = 0;
 	P2DIR = BV(P2_OLED_VDDEN_BIT) | BV(P2_LDO_EN_BIT) | BV(P2_SPI_WP_BIT);
-	P2INP = 0;
+	P2INP = BV(5); /* P0 pulldown */
 
 	P0 = 0;
 	P1 = 0;
