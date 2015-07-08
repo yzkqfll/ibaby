@@ -54,6 +54,7 @@
 #include "ther_batt_service.h"
 #include "ther_private_service.h"
 #include "ther_port.h"
+#include "ther_storage.h"
 
 #define MODULE "[THER] "
 
@@ -295,6 +296,20 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 		break;
 
 	case THER_PS_GET_DEBUG:
+		{
+			ti->mode = CAL_MODE;
+			/*
+			 * stop temp measurement
+			 */
+			osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
+			ther_temp_power_on();
+			ti->temp_measure_stage = TEMP_STAGE_SETUP;
+
+			/*
+			 * stop batt measurement
+			 */
+			osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
+		}
 		*(unsigned short *)data = ther_get_hw_adc(HAL_ADC_CHANNEL_0);
 		*len = 2;
 		break;
@@ -403,6 +418,9 @@ static void ther_device_init(struct ther_info *ti)
 
 	/* mtd */
 	ther_mtd_init();
+
+	/* storage */
+	ther_storage_init();
 
 	/* temp init */
 	ther_temp_init();

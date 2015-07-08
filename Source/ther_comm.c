@@ -70,7 +70,7 @@ static unsigned char encap_temp_data(unsigned char flag, unsigned short temp, un
       osal_ConvertUTCTime( &time, osal_getClock() );
 
       *buf++ = (time.year & 0x00FF);
-      *buf++ = (time.year & 0xFF00)>>8;
+      *buf++ = (time.year & 0xFF00) >> 8;
       //*p++ = time.year;
       //*p++;
 

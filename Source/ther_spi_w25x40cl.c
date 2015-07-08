@@ -29,7 +29,7 @@
 #define PAGE_SIZE            (256)
 
 #ifdef CONFIG_W25X40CL
-#define CHIP_SIZE           (512) //512KB
+#define CHIP_SIZE           (512UL << 10) //512KB
 
 #define SECTOR_COUNT        (128)
 #define BYTES_PER_SECTOR    (4096)     //4KB

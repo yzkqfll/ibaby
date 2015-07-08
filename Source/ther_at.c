@@ -66,17 +66,13 @@
 
 #define AT_OLED_CONTRAST "AT+CONTRAST="
 
+#define AT_ERASE_ALL_DATA "AT+ERASE"
+
 #define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
 
-static unsigned char at_enter_cal_mode(char *ret_buf)
+static void enter_cal_mode(struct ther_info *ti)
 {
-	struct ther_info *ti = get_ti();
-
-	if (ti->mode == CAL_MODE) {
-		return sprintf((char *)ret_buf, "%s\n", "OK");
-	}
-
 	ti->mode = CAL_MODE;
 
 	/*
@@ -90,6 +86,15 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 	 * stop batt measurement
 	 */
 	osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
+}
+
+
+static unsigned char at_enter_cal_mode(char *ret_buf)
+{
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
@@ -247,17 +252,35 @@ static unsigned char at_set_oled9639_contrast(char *ret_buf, unsigned char contr
 	return sprintf((char *)ret_buf, "OK\n");
 }
 
-static void at_test(void)
+static unsigned char at_erase_all_data(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
+	if (storage_erase())
+		return sprintf((char *)ret_buf, "OK\n");
+	else
+		return sprintf((char *)ret_buf, "ERROR\n");
+}
+
+static unsigned char at_test(char *ret_buf)
+{
+	struct ther_info *ti = get_ti();
+	bool ret;
 	short delta;
 
 
-	ther_read_zero_cal_info(&delta);
-	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
+//	ther_read_zero_cal_info(&delta);
+//	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
 
-//	ther_storage_test();
+	ret = ther_storage_test();
+
+	if (ret)
+		return sprintf((char *)ret_buf, "OK\n");
+	else
+		return sprintf((char *)ret_buf, "ERROR\n");
 //	while (1);
 }
 
@@ -344,7 +367,7 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 		*ret_len = sprintf((char *)ret_buf, "%s\n", "OK");
 
 	} else if (strcmp(cmd_buf, AT_TEST) == 0) {
-		at_test();
+		*ret_len = at_test(ret_buf);
 
 	} else if (strcmp(cmd_buf, AT_ALIVE) == 0) {
 
@@ -470,6 +493,10 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 		contrast =  atoi(p);
 
 		*ret_len = at_set_oled9639_contrast(ret_buf, contrast);
+
+	/* AT+ERASE */
+	} else if (strcmp((char *)cmd_buf, AT_ERASE_ALL_DATA) == 0) {
+		*ret_len = at_erase_all_data(ret_buf);
 
 	} else {
 		at_help();

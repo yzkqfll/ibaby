@@ -22,7 +22,7 @@
 
 #include "thermometer.h"
 #include "ther_mtd.h"
-
+#include "ther_misc.h"
 #include "ther_spi_w25x40cl.h"
 
 #define MODULE "[THER MTD] "
@@ -96,7 +96,7 @@ int8 ther_mtd_write(struct mtd_info* m, uint32 addr, void *buf, uint32 len, uint
 		if (ret) {
 			break;
 		}
-		size_written += ret;
+		size_written += write_chunk;
 
 		offset += write_chunk;
 	}
@@ -122,5 +122,10 @@ void ther_mtd_init(void)
 	struct mtd_info *m = &mtd;
 
 	ther_spi_w25x_init(m);
+
+	delay(UART_WAIT);
+	print(LOG_INFO, MODULE "chip size %lx, write size %lx, read size %lx, erase size %lx\n",
+			m->size, m->write_size, m->read_size, m->erase_size);
+	delay(UART_WAIT);
 }
 

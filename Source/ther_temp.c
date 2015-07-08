@@ -167,7 +167,7 @@ void ther_set_adc0_delta(short delta)
 {
 	struct ther_temp *t = &ther_temp;
 
-	ther_write_zero_cal_info(0, delta);
+	storage_write_zero_cal(0, delta);
 
 	t->adc0_delta = delta;
 }
@@ -292,6 +292,6 @@ void ther_temp_init(void)
 
 	t->channel = HAL_ADC_CHANNEL_1;
 
-	ther_read_zero_cal_info(&t->adc0_delta);
+	storage_read_zero_cal(&t->adc0_delta);
 	print(LOG_INFO, MODULE "ADC0 delta %d\n", t->adc0_delta);
 }
