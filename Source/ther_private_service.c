@@ -249,7 +249,7 @@ static gattAttribute_t ther_ps_attr_table[] = {
 		 * Declaration: debug
 		 */
 
-			// properties of <time>
+			// properties of <debug>
 			{
 				{ ATT_BT_UUID_SIZE, characterUUID},	/* 0x2804 */
 				GATT_PERMIT_READ,
@@ -257,16 +257,16 @@ static gattAttribute_t ther_ps_attr_table[] = {
 				&ther_ps_debug_props
 			},
 
-			// value of <time>
+			// value of <debug>
 			{
-				{ ATT_BT_UUID_SIZE, ther_ps_debug_uuid},	/* 0xFFF4 */
+				{ ATT_BT_UUID_SIZE, ther_ps_debug_uuid},	/* 0xFFF5 */
 				GATT_PERMIT_READ | GATT_PERMIT_WRITE,
 				0,
 //					(unsigned char *)&ps_info.time
 				&ps_info.dummy_val
 			},
 
-			// user Description of <time>
+			// user Description of <debug>
 			{
 				{ ATT_BT_UUID_SIZE, charUserDescUUID },
 				GATT_PERMIT_READ,
