@@ -24,7 +24,7 @@
 #include "ther_button.h"
 #include "ther_port.h"
 
-#define MODULE "[THER BUTTON] "
+#define MODULE "[BUTTON ] "
 
 #define BUTTON_MEASURE_INTERVAL 20
 

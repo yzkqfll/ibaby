@@ -25,7 +25,7 @@
 #include "ther_oled9639_display.h"
 #include "ther_oled9639_drv.h"
 
-#define MODULE "[THER DISP] "
+#define MODULE "[DISP   ] "
 
 enum {
 

@@ -25,7 +25,7 @@
 #include "ther_misc.h"
 #include "ther_spi_w25x40cl.h"
 
-#define MODULE "[THER MTD] "
+#define MODULE "[MTD    ] "
 
 static struct mtd_info mtd;
 

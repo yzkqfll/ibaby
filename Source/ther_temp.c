@@ -24,9 +24,9 @@
 #include "ther_adc.h"
 #include "ther_temp.h"
 #include "ther_storage.h"
+#include "ther_ble.h"
 
-
-#define MODULE "[THER TEMP] "
+#define MODULE "[TEMP   ] "
 
 /* p2.3: ldo enable */
 #define LDO_ENABLE_PIN P2_3

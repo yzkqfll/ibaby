@@ -24,7 +24,7 @@
 #include "thermometer.h"
 #include "ther_port.h"
 
-#define MODULE "[BUZZER] "
+#define MODULE "[BUZZER ] "
 
 /*
  * GPIO P1.0 as buzzer driver

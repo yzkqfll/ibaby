@@ -42,7 +42,7 @@
 
 #include "ther_ble.h"
 
-#define MODULE "[THER BLE] "
+#define MODULE "[BLE    ] "
 
 #define BLE_DEVICE_NAME "NeoBay"
 
