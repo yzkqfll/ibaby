@@ -41,8 +41,7 @@
 #include "ther_uart_drv.h"
 
 #include "ther_ble.h"
-
-#include "ther_comm.h"
+#include "ther_data.h"
 
 #include "ther_button.h"
 #include "ther_buzzer.h"
@@ -56,7 +55,7 @@
 #include "ther_port.h"
 #include "ther_storage.h"
 
-#define MODULE "[THER] "
+#define MODULE "[THER   ] "
 
 enum {
 	PM_ACTIVE = 0,
@@ -88,8 +87,12 @@ struct ther_info ther_info;
  * Temp measurement
  */
 #define TEMP_POWER_SETUP_TIME 10 /* ms */
-#define TEMP_MEASURE_INTERVAL SEC_TO_MS(5)
+#define TEMP_MEASURE_INTERVAL SEC_TO_MS(3)
 #define TEMP_MEASURE_MIN_INTERVAL SEC_TO_MS(1)
+
+#define HIS_TEMP_RESTORE_DELAY 500
+#define HIS_TEMP_RESTORE_WAIT_ENABLE SEC_TO_MS(5)
+#define HIS_TEMP_UPLOADING_INTERVAL 100
 
 /*
  * Watchdog
@@ -99,7 +102,7 @@ struct ther_info ther_info;
 /*
  * Batt
  */
-#define BATT_MEASURE_INTERVAL 60000
+#define BATT_MEASURE_INTERVAL 120000
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -332,6 +335,12 @@ static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_statu
 		ti->ble_connect = FALSE;
 	} else if (msg->type == BLE_CONNECT) {
 		ti->ble_connect = TRUE;
+
+		if (!ti->his_temp_uploading) {
+			ti->his_temp_uploading = TRUE;
+			storage_drain_temp();
+			osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_RESTORE_DELAY);
+		}
 	}
 
 }
@@ -363,12 +372,12 @@ static void ther_display_event_report(unsigned char event, unsigned short param)
 	switch (event) {
 	case OLED_EVENT_DISPLAY_ON:
 		/* change temp measure to 1 sec */
-		change_measure_timer(ti, TEMP_MEASURE_MIN_INTERVAL);
+//		change_measure_timer(ti, TEMP_MEASURE_MIN_INTERVAL);
 		ti->display_picture = param;
 		break;
 
 	case OLED_EVENT_TIME_TO_END:
-		change_measure_timer(ti, TEMP_MEASURE_INTERVAL);
+//		change_measure_timer(ti, TEMP_MEASURE_INTERVAL);
 		if (ti->display_picture == OLED_PICTURE_WELCOME) {
 			/* show first picture after welcome */
 			struct display_param param;
@@ -442,6 +451,8 @@ static void ther_device_exit_pre(struct ther_info *ti)
 {
 	/* ble init */
 	ther_ble_exit();
+
+	ther_storage_exit();
 }
 
 static void ther_device_exit_post(struct ther_info *ti)
@@ -613,19 +624,13 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			ther_temp_power_off();
 
 			if (ti->ble_connect) {
-				bool music = TRUE;
 				if (ti->temp_notification_enable) {
-					ther_send_temp_notify(ble_get_gap_handle(), ti->temp_current);
+					ther_send_temp_notify(ti->temp_current);
 				} else if (ti->temp_indication_enable) {
-					ther_send_temp_indicate(ble_get_gap_handle(), ti->task_id, ti->temp_current);
-				} else {
-					music = FALSE;
+//					ther_send_temp_indicate(ti->task_id, ti->temp_current);
 				}
-
-/*				if (music)
-					ther_buzzer_play_music(BUZZER_MUSIC_SEND_TEMP);*/
 			} else {
-				// TODO: save to local
+				ther_save_temp_to_local(ti->temp_current);
 			}
 
 			if (ti->display_picture == OLED_PICTURE1 &&
@@ -642,6 +647,46 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		}
 
 		return (events ^ TH_TEMP_MEASURE_EVT);
+	}
+
+	if (events & TH_HIS_TEMP_RESTORE_EVT) {
+		if (!ti->his_temp_bundle) {
+			if (ti->temp_indication_enable) {
+				storage_restore_temp((uint8 **)&ti->his_temp_bundle, &ti->his_temp_len);
+				if (ti->his_temp_bundle) {
+					ti->his_temp_offset = 0;
+					osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_UPLOADING_INTERVAL);
+				} else {
+					print(LOG_DBG, MODULE "his temp restore: no more his temp, exit\n");
+					ti->his_temp_uploading = FALSE;
+				}
+
+			} else if (!ti->ble_connect) {
+				print(LOG_DBG, MODULE "his temp restore: ble disconnect, exit\n");
+				ti->his_temp_uploading = FALSE;
+
+			} else {
+//				print(LOG_DBG, MODULE "his temp restore: wait for indication enable\n");
+				osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_RESTORE_WAIT_ENABLE);
+			}
+
+		} else {
+			if (ti->his_temp_offset < ti->his_temp_len) {
+				uint8 *data = ti->his_temp_bundle + ti->his_temp_offset;
+
+				ther_send_history_temp(ti->task_id, data, sizeof(struct temp_data));
+
+				ti->his_temp_offset += sizeof(struct temp_data);
+			} else {
+				ti->his_temp_bundle = NULL;
+				ti->his_temp_offset = 0;
+				ti->his_temp_len = 0;
+				print(LOG_DBG, MODULE "his temp restore: a bundle uploading completed\n");
+			}
+			osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_UPLOADING_INTERVAL);
+		}
+
+		return (events ^ TH_HIS_TEMP_RESTORE_EVT);
 	}
 
 	/* Display event */

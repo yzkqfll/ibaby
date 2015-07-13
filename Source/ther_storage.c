@@ -11,8 +11,13 @@
  * 2015/06/01 - Init version
  *              by Leo Liu <59089403@qq.com>
  *
+ * 2015/07/09 - Add history temp saving
+ *              by Leo Liu <59089403@qq.com>
+ *
+ *
  */
 
+#include <string.h>
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_board.h"
@@ -24,8 +29,9 @@
 #include "ther_mtd.h"
 #include "ther_port.h"
 #include "ther_misc.h"
+#include "ther_data.h"
 
-#define MODULE "[THER STORAGE] "
+#define MODULE "[STORAGE] "
 
 enum {
 	SECTOR_SYS = 0,
@@ -35,7 +41,7 @@ enum {
 
 	SECTOR_HISTORY_MNGT,
 	SECTOR_HISTORY_START,
-	SECTOR_HISTORY_END = 126,
+	SECTOR_HISTORY_END = 126, /* not included */
 
 	SECTOR_TEST,
 	SECTOR_NR = 128,
@@ -44,6 +50,9 @@ enum {
 #define ERASED_UINT8 0xFF
 #define ERASED_UINT16 0xFFFF
 
+/*
+ * system information
+ */
 #define SYS_MAGIC 0x9527
 #define STORAGE_FORMATED_FLAG 0x3333
 struct sys_info {
@@ -52,6 +61,9 @@ struct sys_info {
 	unsigned short crc;
 };
 
+/*
+ * calibration
+ */
 #define ZERO_CAL_MAGIC 0x1024
 struct zero_cal {
 	unsigned short magic;
@@ -68,36 +80,103 @@ struct temp_cal {
 	unsigned short crc;
 };
 
-#define HIS_MNGT_MAGIC 0x1908
-#define HIS_MNGT_UNIT_OBSOLETE 0xDEAD
-struct his_mngt_unit {
+/*
+ * history temp
+ */
+struct his_unit {
 	uint16 magic;
-	uint8 start_sector;
-	uint8 end_sector;
 	uint16 status;
 };
 
-#define HIS_TEMP_MAGIC 0x0BED
-struct his_temp_header {
-	unsigned short magic;
-	unsigned char valid;
+#define HIS_MNGT_UNIT_MAGIC 0x1908
+#define HIS_MNGT_UNIT_OBSOLETE 0xDEAD
+struct his_mngt_unit {
+	struct his_unit header;
 
-	unsigned short crc;
+	uint16 his_temp_head_unit;
+	uint16 his_temp_tail_unit;
 };
 
-#define BUF_LEN 256
+#define HIS_TEMP_UNIT_MAGIC 0x1909
+#define HIS_TEMP_UNIT_OBSOLETE 0xDEAD
+struct his_temp_unit {
+	struct his_unit header;
+
+	uint16 data_len;
+
+	/* temp info here */
+};
+
+enum {
+	HIS_UNIT_STATUS_MTD_ERR,
+	HIS_UNIT_STATUS_CLEAN,
+	HIS_UNIT_STATUS_VALID,
+	HIS_UNIT_STATUS_OBSOLETE,
+	HIS_UNIT_STATUS_UNKNOWN,
+};
+
+enum {
+	HIS_MNGT,
+	HIS_TEMP,
+};
+static const char *his_type[] = {
+	"his_mngt",
+	"his_temp"
+};
+
+
+#define BUF_LEN 256 /* = unit size */
+
 struct ther_storage {
-	uint32 his_mngt_addr;
-	uint32 his_mngt_size;
-	uint16 his_mngt_unit_size;
+	uint32 his_chunk_size; /* for erase */
+	uint16 his_unit_size; /* for write */
 
-	uint8 history_start_sector;
-	uint8 history_end_sector;
+	uint32 his_mngt_start_addr;
+	uint32 his_mngt_end_addr;
+	uint16 his_mngt_max_units;
+	uint16 his_mngt_unit;
 
-	uint8 buf[BUF_LEN];
+	uint32 his_temp_start_addr;
+	uint32 his_temp_end_addr;
+	uint16 his_temp_max_units;
+	uint16 his_temp_head_unit;
+	uint16 his_temp_tail_unit;
+
+	uint8 temp_write_buf[BUF_LEN];
+	uint16 offset;
+
+	uint8 temp_read_buf[BUF_LEN];
 };
+static struct ther_storage *ther_storage;
 
-static struct ther_storage ther_storage;
+#define OFFSET(s, m)   (uint32)(&(((s *)0)->m))
+
+#define UNITS_PER_CHUNK(ts) ((ts)->his_chunk_size / (ts)->his_unit_size)
+
+#define NEXT_UNIT(type, ts, unit) \
+	((type == HIS_MNGT) ? (((unit) + 1) % (ts)->his_mngt_max_units) : \
+			(((unit) + 1) % (ts)->his_temp_max_units))
+
+#define NEXT_CHUNK(type, ts, unit) \
+	(((type == HIS_MNGT) ? (((unit) + UNITS_PER_CHUNK(ts)) % (ts)->his_mngt_max_units) : \
+			(((unit) + UNITS_PER_CHUNK(ts)) % (ts)->his_temp_max_units)) & (~(UNITS_PER_CHUNK(ts) - 1)))
+
+#define HIS_ADDR(type, ts, unit) \
+	((type == HIS_MNGT) ? ((ts)->his_mngt_start_addr + (unit) * (ts)->his_unit_size) : \
+	((ts)->his_temp_start_addr + (unit) * (ts)->his_unit_size))
+
+
+static void his_write_mngt_unit(struct ther_storage *ts, struct mtd_info *m, uint16 head_unit, uint16 tail_unit);
+
+static struct ther_storage *get_ts(void)
+{
+	return ther_storage;
+}
+
+static void set_ts(struct ther_storage *ts)
+{
+	ther_storage = ts;
+}
 
 static bool is_clean(unsigned char *data, uint16 len)
 {
@@ -110,6 +189,548 @@ static bool is_clean(unsigned char *data, uint16 len)
 
 	return TRUE;
 }
+
+static uint16 his_get_temp_unit_nr(struct ther_storage *ts)
+{
+	uint16 head_unit, tail_unit;
+
+	head_unit = ts->his_temp_head_unit;
+	tail_unit = ts->his_temp_tail_unit;
+
+	if (head_unit == tail_unit)
+		return 0;
+	else if (head_unit > tail_unit)
+		return head_unit - tail_unit;
+	else
+		return head_unit + ts->his_temp_max_units - tail_unit;
+}
+
+static uint8 his_get_unit_status(struct ther_storage *ts, struct mtd_info *m, uint8 type, uint16 unit)
+{
+	uint8 ret;
+	struct his_unit hu;
+	uint16 expected_magic, obsoleted_status;
+	uint32 addr = HIS_ADDR(type, ts, unit);
+
+	if (type == HIS_MNGT) {
+		expected_magic = HIS_MNGT_UNIT_MAGIC;
+		obsoleted_status = HIS_MNGT_UNIT_OBSOLETE;
+
+	} else if (type == HIS_TEMP) {
+		expected_magic = HIS_TEMP_UNIT_MAGIC;
+		obsoleted_status = HIS_TEMP_UNIT_OBSOLETE;
+	}
+
+	if (ther_mtd_open(m))
+		return HIS_UNIT_STATUS_MTD_ERR;
+
+	if (ther_mtd_read(m, addr, &hu, sizeof(hu), NULL)) {
+		print(LOG_ERR, MODULE "his_get_unit_status(): fail to read %s unit %d(0x%lx)\n",
+				his_type[type], unit, addr);
+		ret = HIS_UNIT_STATUS_MTD_ERR;
+		goto out;
+	}
+
+	if (hu.magic == ERASED_UINT16 && hu.status == ERASED_UINT16) {
+		ret = HIS_UNIT_STATUS_CLEAN;
+
+	} else if (hu.magic == expected_magic && hu.status == ERASED_UINT16) {
+		ret = HIS_UNIT_STATUS_VALID;
+
+	} else if (hu.magic == expected_magic && hu.status == obsoleted_status) {
+		ret = HIS_UNIT_STATUS_OBSOLETE;
+
+	} else {
+		print(LOG_ERR, MODULE "his_get_unit_status(): %s unit %d(0x%lx) unknown(magic 0x%x, status 0x%x)\n",
+				his_type[type], unit, addr, hu.magic, hu.status);
+		ret = HIS_UNIT_STATUS_UNKNOWN;
+	}
+
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+static bool his_read_unit(struct ther_storage *ts, struct mtd_info *m,
+						uint8 type, uint16 unit, uint8 *buf, uint32 len)
+{
+	bool ret = FALSE;
+	uint32 addr = HIS_ADDR(type, ts, unit);
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, buf, len, NULL)) {
+		print(LOG_ERR, MODULE "fail to read %s unit %d(addr 0x%lx), len 0x%lx\n",
+				his_type[type], unit, addr, len);
+		goto out;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+static bool his_write_unit(struct ther_storage *ts, struct mtd_info *m,
+						uint8 type, uint16 unit, uint8 *buf, uint32 len)
+{
+	bool ret = FALSE;
+	uint32 addr = HIS_ADDR(type, ts, unit);
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_write(m, addr, buf, len, NULL)) {
+		print(LOG_ERR, MODULE "fail to write %s unit %d(addr 0x%lx), len 0x%lx\n",
+				his_type[type], unit, addr, len);
+		goto out;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+static bool his_obsolete_unit(struct ther_storage *ts, struct mtd_info *m,
+						uint8 type, uint16 unit, uint16 status)
+{
+	bool ret = FALSE;
+	uint32 addr = HIS_ADDR(type, ts, unit);
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_write(m, addr + OFFSET(struct his_unit, status), (uint8 *)&status, sizeof(status), NULL)) {
+		print(LOG_ERR, MODULE "fail to obsolete %s unit %d(0x%lx)\n",
+				his_type[type], unit, addr);
+		goto out;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+static bool his_erase_chunk(struct ther_storage *ts, struct mtd_info *m, uint8 type, uint16 unit)
+{
+	bool ret = FALSE;
+	uint32 addr;
+
+	if (unit & (UNITS_PER_CHUNK(ts) - 1)) {
+		print(LOG_WARNING, MODULE "his_erase_chunk(): %s unit %d is not chunk aligned\n",
+				his_type[type], unit);
+		unit &= ~(UNITS_PER_CHUNK(ts) - 1);
+	}
+	addr = HIS_ADDR(type, ts, unit);
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_erase(m, addr, ts->his_chunk_size, NULL)) {
+		print(LOG_ERR, MODULE "fail to erase %s chunk %d(addr 0x%lx)\n",
+				his_type[type], unit, addr);
+		goto out;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+static void __enqueue_temp_unit(struct ther_storage *ts)
+{
+	if (NEXT_UNIT(HIS_TEMP, ts, ts->his_temp_head_unit) == ts->his_temp_tail_unit) {
+		/* full */
+		ts->his_temp_tail_unit = NEXT_UNIT(HIS_TEMP, ts, ts->his_temp_tail_unit);
+	}
+
+	ts->his_temp_head_unit = NEXT_UNIT(HIS_TEMP, ts, ts->his_temp_head_unit);
+}
+
+static void __dequeue_temp_unit(struct ther_storage *ts)
+{
+	if (ts->his_temp_tail_unit == ts->his_temp_head_unit) {
+		/* empty */
+	} else {
+		ts->his_temp_tail_unit = NEXT_UNIT(HIS_TEMP, ts, ts->his_temp_tail_unit);
+	}
+}
+
+static void his_enqueue_temp_unit(struct ther_storage *ts, struct mtd_info *m, struct his_temp_unit *tu)
+{
+	uint8 status;
+
+	status = his_get_unit_status(ts, m, HIS_TEMP, ts->his_temp_head_unit);
+
+	switch (status) {
+	case HIS_UNIT_STATUS_CLEAN:
+		break;
+
+	default:
+		print(LOG_DBG, MODULE "his_temp unit %d is not clean(%d), erase the chunk\n",
+				ts->his_temp_head_unit, status);
+		his_erase_chunk(ts, m, HIS_TEMP, ts->his_temp_head_unit);
+		/* move to next unit to avoid bad block */
+//		__enqueue_temp_unit(ts);
+		break;
+	}
+
+	print(LOG_DBG, MODULE "-> Enqueue his_temp to unit %d, len %d\n",
+			ts->his_temp_head_unit, ts->offset);
+	his_write_unit(ts, m, HIS_TEMP, ts->his_temp_head_unit, (uint8 *)tu, ts->offset);
+
+	__enqueue_temp_unit(ts);
+	his_write_mngt_unit(ts, m, ts->his_temp_head_unit, ts->his_temp_tail_unit);
+}
+
+static bool his_dequeue_temp_unit(struct ther_storage *ts, struct mtd_info *m, struct his_temp_unit **tu)
+{
+	bool ret = FALSE;
+
+	switch (his_get_unit_status(ts, m, HIS_TEMP, ts->his_temp_tail_unit)) {
+	case HIS_UNIT_STATUS_VALID:
+		his_read_unit(ts, m, HIS_TEMP, ts->his_temp_tail_unit, ts->temp_read_buf, ts->his_unit_size);
+		*tu = (struct his_temp_unit *)ts->temp_read_buf;
+		print(LOG_DBG, MODULE "<- Dequeue his_temp from unit %d, len %d\n",
+				ts->his_temp_tail_unit, (*tu)->data_len);
+
+		his_obsolete_unit(ts, m, HIS_TEMP, ts->his_temp_tail_unit, HIS_TEMP_UNIT_OBSOLETE);
+		ret = TRUE;
+		break;
+
+	default:
+		break;
+	}
+
+	__dequeue_temp_unit(ts);
+	his_write_mngt_unit(ts, m, ts->his_temp_head_unit, ts->his_temp_tail_unit);
+
+	return ret;
+}
+
+static void his_encap_mngt_unit(struct his_mngt_unit *mu, uint16 head_unit, uint16 tail_unit)
+{
+	mu->header.magic = HIS_MNGT_UNIT_MAGIC;
+	mu->header.status = ERASED_UINT16;
+	mu->his_temp_head_unit = head_unit;
+	mu->his_temp_tail_unit = tail_unit;
+}
+
+static void his_write_mngt_unit(struct ther_storage *ts, struct mtd_info *m, uint16 head_unit, uint16 tail_unit)
+{
+	struct his_mngt_unit mu;
+	uint8 status;
+
+	/* mark current mngt unit obsolete */
+	his_obsolete_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, HIS_MNGT_UNIT_OBSOLETE);
+
+	/* move to next unit(clean) */
+	ts->his_mngt_unit = NEXT_UNIT(HIS_MNGT, ts, ts->his_mngt_unit);
+
+	status = his_get_unit_status(ts, m, HIS_MNGT, ts->his_mngt_unit);
+	switch (status) {
+	case HIS_UNIT_STATUS_CLEAN:
+		break;
+
+	default:
+		print(LOG_DBG, MODULE "his_mngt unit %d is not clean(%d), erase the chunk\n",
+				ts->his_mngt_unit, status);
+		his_erase_chunk(ts, m, HIS_MNGT, ts->his_mngt_unit);
+		break;
+	}
+
+	his_encap_mngt_unit(&mu, head_unit, tail_unit);
+	print(LOG_DBG, MODULE "write his_mngt unit %d: his_temp head at %d, tail at %d(%d valid)\n",
+			ts->his_mngt_unit, head_unit, tail_unit, his_get_temp_unit_nr(ts));
+	his_write_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
+}
+
+static void his_write_temp_unit(struct ther_storage *ts, struct mtd_info *m)
+{
+	struct his_temp_unit *tu = (struct his_temp_unit *)ts->temp_write_buf;
+
+	tu->header.magic = HIS_TEMP_UNIT_MAGIC;
+	tu->header.status = ERASED_UINT16;
+	tu->data_len = ts->offset - sizeof(struct his_temp_unit);
+
+	if (tu->data_len) {
+		his_enqueue_temp_unit(ts, m, tu);
+		ts->offset = sizeof(struct his_temp_unit);
+	}
+}
+
+static bool his_init_temp(struct ther_storage *ts, struct mtd_info*m)
+{
+	switch (his_get_unit_status(ts, m, HIS_TEMP, ts->his_temp_head_unit)) {
+	case HIS_UNIT_STATUS_CLEAN:
+		break;
+
+	default:
+		print(LOG_DBG, MODULE "his_init_temp(): head unit %d status %d\n",
+				ts->his_temp_head_unit, his_get_unit_status(ts, m, HIS_TEMP, ts->his_temp_head_unit));
+		his_erase_chunk(ts, m, HIS_TEMP, ts->his_temp_head_unit);
+		__enqueue_temp_unit(ts); /* move to next unit to avoid bad block */
+		his_write_mngt_unit(ts, m, ts->his_temp_head_unit, ts->his_temp_tail_unit);
+		break;
+	}
+
+	return TRUE;
+}
+
+static void his_reset(struct ther_storage *ts, struct mtd_info*m)
+{
+	struct his_mngt_unit mu;
+	uint16 unit;
+
+	ts->his_mngt_unit = 0;
+
+	ts->his_temp_head_unit = 0;
+	ts->his_temp_tail_unit = 0;
+
+	ts->offset = sizeof(struct his_temp_unit);
+
+	/*
+	 * his mngt
+	 */
+	for (unit = 0; unit < ts->his_mngt_max_units; unit += UNITS_PER_CHUNK(ts)) {
+		his_erase_chunk(ts, m, HIS_MNGT, unit);
+	}
+	print(LOG_DBG, MODULE "reset his_mngt, head at %d\n", ts->his_mngt_unit);
+
+	his_encap_mngt_unit(&mu, ts->his_temp_head_unit, ts->his_temp_tail_unit);
+	his_write_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
+
+	/*
+	 * his temp
+	 */
+	for (unit = 0; unit < ts->his_temp_max_units; unit += UNITS_PER_CHUNK(ts)) {
+		his_erase_chunk(ts, m, HIS_TEMP, unit);
+	}
+	print(LOG_DBG, MODULE "reset his_temp: head at %d, tail at %d now, %d valid units\n",
+			ts->his_temp_head_unit, ts->his_temp_tail_unit,
+			his_get_temp_unit_nr(ts));
+}
+
+static bool his_init_mngt(struct ther_storage *ts, struct mtd_info*m)
+{
+	uint16 unit;
+	unsigned char obsoleted = 0;
+	struct his_mngt_unit mu;
+	bool exit = FALSE;
+
+	print(LOG_ERR, MODULE "scan his_mngt area\n");
+
+	for (unit = 0; unit < ts->his_mngt_max_units; unit++) {
+
+		switch (his_get_unit_status(ts, m, HIS_MNGT, unit)) {
+		case HIS_UNIT_STATUS_CLEAN:
+			if (unit & ~(UNITS_PER_CHUNK(ts) - 1))
+				print(LOG_DBG, MODULE, "his_init_mngt(): clean unit at %d not aligned??\n", unit);
+
+			his_encap_mngt_unit(&mu, 0, 0);
+			his_write_unit(ts, m, HIS_MNGT, 0, (uint8 *)&mu, sizeof(mu));
+			exit = TRUE;
+			break;
+
+		case HIS_UNIT_STATUS_VALID:
+			print(LOG_ERR, MODULE "find his_mngt head unit at %d\n", unit);
+			ts->his_mngt_unit = unit;
+
+			/* get his_temp head & tail unit */
+			his_read_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
+			ts->his_temp_head_unit = mu.his_temp_head_unit;
+			ts->his_temp_tail_unit = mu.his_temp_tail_unit;
+
+			print(LOG_ERR, MODULE "find his_temp head at %d, tail at %d, %d valid units\n",
+					ts->his_temp_head_unit, ts->his_temp_tail_unit,
+					his_get_temp_unit_nr(ts));
+
+			exit = TRUE;
+			break;
+
+		case HIS_UNIT_STATUS_OBSOLETE:
+//			print(LOG_ERR, MODULE "obsoleted his_mngt unit %d\n", unit);
+			obsoleted++;
+			break;
+
+		default:
+			print(LOG_ERR, MODULE "his_mngt unit %d status: %d\n",
+					unit, his_get_unit_status(ts, m, HIS_MNGT, unit));
+			break;
+		}
+
+		if (exit)
+			break;
+	}
+
+	if (unit == ts->his_mngt_max_units) {
+		his_reset(ts, m);
+	}
+
+	delay(UART_WAIT);
+
+	return TRUE;
+}
+
+static void his_init_patition(struct ther_storage *ts, struct mtd_info*m)
+{
+	ts->his_chunk_size = m->erase_size;
+	ts->his_unit_size = m->write_size;
+
+	/* mngt */
+	ts->his_mngt_start_addr = m->erase_size * SECTOR_HISTORY_MNGT;
+	ts->his_mngt_end_addr = ts->his_mngt_start_addr + m->erase_size;
+	ts->his_mngt_max_units = (ts->his_mngt_end_addr - ts->his_mngt_start_addr) / ts->his_unit_size;
+	ts->his_mngt_unit = 0;
+
+	/* temp */
+	ts->his_temp_start_addr = m->erase_size * SECTOR_HISTORY_START;
+	ts->his_temp_end_addr = m->erase_size * SECTOR_HISTORY_END;
+	ts->his_temp_max_units = (ts->his_temp_end_addr - ts->his_temp_start_addr) / ts->his_unit_size;
+	ts->his_temp_head_unit = 0;
+	ts->his_temp_tail_unit = 0;
+
+	ts->offset = sizeof(struct his_temp_unit);
+}
+
+
+void ther_storage_init(void)
+{
+	struct mtd_info *m = get_mtd();
+	struct ther_storage *ts;
+
+	ts = osal_mem_alloc(sizeof(struct ther_storage));
+	if (!ts) {
+		print(LOG_ERR, MODULE "fail to alloc struct ther_storage\n");
+		return;
+	}
+	set_ts(ts);
+	memset(ts, 0, sizeof(struct ther_storage));
+
+	if (!storage_is_formated()) {
+		print(LOG_INFO, MODULE "storage is not formated, format it\n");
+		if (!storage_format())
+			print(LOG_INFO, MODULE "fail to format storage\n");
+	}
+
+	his_init_patition(ts, m);
+
+	if (!his_init_mngt(ts, m))
+		print(LOG_ERR, MODULE "fail to init his mngt\n");
+
+	if (!his_init_temp(ts, m))
+		print(LOG_ERR, MODULE "fail to init his temp\n");
+}
+
+
+
+void ther_storage_exit(void)
+{
+	struct ther_storage *ts = get_ts();
+
+	if (ts)
+		osal_mem_free(ts);
+}
+
+
+void storage_reset(void)
+{
+	struct ther_storage *ts = get_ts();
+	struct mtd_info*m = get_mtd();
+
+	his_reset(ts, m);
+}
+
+void storage_drain_temp(void)
+{
+	struct ther_storage *ts = get_ts();
+	struct mtd_info*m = get_mtd();
+
+	print(LOG_DBG, MODULE "drain out his_temp unit to head %d\n", ts->his_temp_head_unit);
+	his_write_temp_unit(ts, m);
+}
+
+bool storage_save_temp(uint8 *data, uint16 len)
+{
+	struct ther_storage *ts = get_ts();
+	struct mtd_info*m = get_mtd();
+	struct temp_data *td = (struct temp_data *)data;
+	bool ret = TRUE;
+
+	if (ts->offset + len >= BUF_LEN) {
+		his_write_temp_unit(ts, m);
+	}
+
+	print(LOG_DBG, MODULE "Store: %d-%02d-%02d %02d:%02d:%02d, temp %ld, (offset %d, len %d)\n",
+				td->time.year, td->time.month, td->time.day, td->time.hour, td->time.minutes, td->time.seconds,
+				td->temp & 0xFFFFFF,
+				ts->offset, len);
+	memcpy(ts->temp_write_buf + ts->offset, data, len);
+	ts->offset += len;
+
+	return ret;
+}
+
+void storage_restore_temp(uint8 **buf, uint16 *len)
+{
+	struct ther_storage *ts = get_ts();
+	struct mtd_info *m = get_mtd();
+	struct his_temp_unit *tu;
+
+	*buf = NULL;
+	*len = 0;
+	while (his_get_temp_unit_nr(ts) > 0) {
+		if (his_dequeue_temp_unit(ts, m, &tu)) {
+			*buf = (uint8 *)tu + sizeof(struct his_temp_unit);;
+			*len = tu->data_len;
+			break;
+		}
+	};
+
+}
+
+void storage_show_info(void)
+{
+	struct ther_storage *ts = get_ts();
+	struct mtd_info*m = get_mtd();
+	struct his_mngt_unit mu;
+
+	print(LOG_DBG, MODULE "\n");
+
+	print(LOG_DBG, MODULE "his chunksize 0x%lx, unitsize 0x%x\n",
+			ts->his_chunk_size, ts->his_unit_size);
+
+	print(LOG_DBG, MODULE "his_mngt area [0x%lx, 0x%lx), %d units\n",
+			ts->his_mngt_start_addr, ts->his_mngt_end_addr,
+			ts->his_mngt_max_units);
+
+	print(LOG_DBG, MODULE "his_temp area [0x%lx, 0x%lx), %d units\n",
+			ts->his_temp_start_addr, ts->his_temp_end_addr,
+			ts->his_temp_max_units);
+
+	/* get his_temp head & tail unit */
+	his_read_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
+	print(LOG_ERR, MODULE "his_mngt unit head %d(0x%lx): his_temp head at %d, tail at %d\n",
+			ts->his_mngt_unit, HIS_ADDR(HIS_MNGT, ts, ts->his_mngt_unit),
+			mu.his_temp_head_unit, mu.his_temp_tail_unit);
+
+	print(LOG_ERR, MODULE "his_temp unit head %d(0x%lx), tail %d(0x%lx), %d valid units\n",
+			ts->his_temp_head_unit, HIS_ADDR(HIS_TEMP, ts, ts->his_temp_head_unit),
+			ts->his_temp_tail_unit, HIS_ADDR(HIS_TEMP, ts, ts->his_temp_tail_unit),
+			his_get_temp_unit_nr(ts));
+
+	print(LOG_DBG, MODULE "\n");
+}
+
 
 bool storage_write_zero_cal(unsigned short hw_adc0, short delta)
 {
@@ -151,133 +772,14 @@ bool storage_read_zero_cal(short *delta)
 		*delta = 0;
 		ret = FALSE;
 	} else {
-		*delta = zc.delta;
+		if (zc.delta == 0xFFFF)
+			*delta = 0;
+		else
+			*delta = zc.delta;
 	}
 
 	ther_mtd_close(m);
 
-	return ret;
-}
-
-
-
-
-static void encap_his_mngt_unit(struct his_mngt_unit *u, uint8 start, uint8 end)
-{
-	u->magic = HIS_MNGT_MAGIC;
-	u->start_sector = start;
-	u->end_sector = end;
-	u->status = ERASED_UINT16;
-}
-
-static bool write_his_mngt_unit(struct ther_storage *ts, struct mtd_info*m,
-								uint8 index, struct his_mngt_unit *u)
-{
-	uint32 addr = ts->his_mngt_addr + index * ts->his_mngt_unit_size;
-
-	delay(UART_WAIT);
-	print(LOG_ERR, MODULE "write his_mngt_unit([%d, %d]) at uint %d(addr 0x%lx)\n",
-			u->start_sector, u->end_sector, index, addr);
-
-	if (ther_mtd_write(m, addr, u, sizeof(struct his_mngt_unit), NULL)) {
-		print(LOG_ERR, MODULE "fail to write his_mngt_unit at uint %d(addr 0x%lx)\n", index, addr);
-		return FALSE;
-	}
-	delay(UART_WAIT);
-
-	return TRUE;
-}
-
-
-
-static bool check_his_mngt_unit(struct ther_storage *ts, struct mtd_info*m, uint8 index)
-{
-	bool ret = FALSE;
-	uint32 addr = ts->his_mngt_addr + index * ts->his_mngt_unit_size;
-
-	if (ther_mtd_read(m, addr, ts->buf, BUF_LEN, NULL)) {
-		print(LOG_ERR, MODULE "fail to read his_mngt_unit %d(addr 0xlx)\n", index, addr);
-		return ret;
-	}
-
-	if (is_clean(ts->buf, BUF_LEN))
-		ret = TRUE;
-
-	return ret;
-}
-
-static bool storage_init_his_mngt(struct ther_storage *ts, struct mtd_info*m)
-{
-	bool ret = FALSE;
-	unsigned char i;
-	uint32 addr;
-	unsigned char obsoleted = 0;
-	struct his_mngt_unit unit;
-
-	if (ther_mtd_open(m))
-		goto out;
-
-	ts->his_mngt_addr = m->erase_size * SECTOR_HISTORY_MNGT;
-	ts->his_mngt_size = m->erase_size;
-	ts->his_mngt_unit_size = m->write_size;
-	print(LOG_DBG, MODULE "his_mngt_addr 0x%lx, his_mngt_size 0x%lx, his_mngt_unit_size 0x%x\n",
-			ts->his_mngt_addr, ts->his_mngt_size, ts->his_mngt_unit_size);
-
-	addr = ts->his_mngt_addr;
-	for (i = 0; i < ts->his_mngt_size / ts->his_mngt_unit_size; i++) {
-
-		if (ther_mtd_read(m, addr, &unit, sizeof(unit), NULL)) {
-			print(LOG_ERR, MODULE "fail to read history_mngt_unit at addr 0x%x\n", addr);
-			goto out;
-		}
-
-		if (unit.magic == HIS_MNGT_MAGIC) {
-			if (unit.status != HIS_MNGT_UNIT_OBSOLETE)
-				break;
-			else
-				obsoleted++;
-
-		} else if (unit.magic == ERASED_UINT16) {
-			if (i == 0) {
-				print(LOG_ERR, MODULE "his_mngt area is clean\n");
-				encap_his_mngt_unit(&unit, 0, 0);
-				write_his_mngt_unit(ts, m, 0, &unit);
-				break;
-			} else {
-				print(LOG_ERR, MODULE "unit %d(addr 0x%lx) is clean??\n", i, addr);
-			}
-		} else {
-			print(LOG_ERR, MODULE "unknown magic(0x%x) at unit %d(addr 0x%lx)\n",
-					unit.magic, i, addr);
-		}
-
-		addr += ts->his_mngt_unit_size;
-	}
-
-	if (i != ts->his_mngt_addr / ts->his_mngt_unit_size) {
-		print(LOG_ERR, MODULE "find his_mngt_unit([%d, %d]) at unit %d(addr 0x%lx) \n",
-				unit.start_sector, unit.end_sector, i, addr);
-		ts->history_start_sector = unit.start_sector;
-		ts->history_end_sector = unit.end_sector;
-
-	} else {
-		print(LOG_ERR, MODULE "do not find valid his_mngt_unit, erase his_mngt area\n");
-		if (ther_mtd_erase(m, ts->his_mngt_addr, ts->his_mngt_size, NULL)) {
-			print(LOG_ERR, MODULE "fail to erase his_mngt area at addr 0x%lx\n", addr);
-			goto out;
-		}
-		encap_his_mngt_unit(&unit, 0, 0);
-		write_his_mngt_unit(ts, m, 0, &unit);
-
-		ts->history_start_sector = unit.start_sector;
-		ts->history_end_sector = unit.end_sector;
-	}
-
-	ret = TRUE;
-
-out:
-	delay(UART_WAIT);
-	ther_mtd_close(m);
 	return ret;
 }
 
@@ -329,7 +831,6 @@ bool storage_format(void)
 	}
 
 	ret = TRUE;
-
 out:
 	ther_mtd_close(m);
 
@@ -349,36 +850,20 @@ bool storage_erase(void)
 	}
 
 	ret = TRUE;
-
 out:
 	ther_mtd_close(m);
 
 	return ret;
 }
 
-void ther_storage_init(void)
-{
-	struct mtd_info*m = get_mtd();
-	struct ther_storage *ts = &ther_storage;
 
-	if (!storage_is_formated()) {
-		print(LOG_INFO, MODULE "storage is not formated, format it\n");
-		if (storage_format())
-			print(LOG_INFO, MODULE "storage format OK\n");
-		else
-			print(LOG_INFO, MODULE "fail to format storage\n");
-	}
 
-	if (!storage_init_his_mngt(ts, m))
-		print(LOG_ERR, MODULE "fail to init history mngt\n");
-
-}
 
 
 bool ther_storage_test1(void)
 {
 	struct mtd_info*m = get_mtd();
-	struct ther_storage *ts = &ther_storage;
+	struct ther_storage *ts = get_ts();
 	unsigned char i;
 	uint32 addr;
 
@@ -389,7 +874,7 @@ bool ther_storage_test1(void)
 	for (i = SECTOR_HISTORY_START; i <= SECTOR_HISTORY_END; i++) {
 		addr = m->erase_size * i;
 		print(LOG_DBG, "addr 0x%lx\n", addr);
-		if (ther_mtd_read(m, addr, ts->buf, 13, NULL)) {
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, 13, NULL)) {
 			return FALSE;
 		}
 	}
@@ -403,7 +888,7 @@ bool ther_storage_test1(void)
 bool ther_storage_test(void)
 {
 	struct mtd_info*m = get_mtd();
-	struct ther_storage *ts = &ther_storage;
+	struct ther_storage *ts = get_ts();
 	unsigned char i;
 	uint32 addr;
 	unsigned short b;
@@ -422,8 +907,8 @@ bool ther_storage_test(void)
 		}
 		print(LOG_DBG, "read 0x%x\n", b);
 
-		ts->buf[0] = 0x12;
-		if (ther_mtd_write(m, addr, ts->buf, 1, NULL))
+		ts->temp_read_buf[0] = 0x12;
+		if (ther_mtd_write(m, addr, ts->temp_read_buf, 1, NULL))
 			return FALSE;
 
 		if (ther_mtd_read(m, addr, (void *)&b, 2, NULL)) {
@@ -431,8 +916,8 @@ bool ther_storage_test(void)
 		}
 		print(LOG_DBG, "read 0x%x\n", b);
 
-		ts->buf[1] = 0x34;
-		if (ther_mtd_write(m, addr + 1, ts->buf + 1, 1, NULL))
+		ts->temp_read_buf[1] = 0x34;
+		if (ther_mtd_write(m, addr + 1, ts->temp_read_buf + 1, 1, NULL))
 			return FALSE;
 
 		if (ther_mtd_read(m, addr, (void *)&b, 2, NULL)) {

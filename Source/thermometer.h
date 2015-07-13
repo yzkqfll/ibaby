@@ -63,6 +63,7 @@ extern "C"
 #define TH_DISPLAY_EVT				0x0020
 #define TH_WATCHDOG_EVT				0x0040
 #define TH_BATT_EVT					0x0080
+#define TH_HIS_TEMP_RESTORE_EVT		0x0100
 #define TH_TEST_EVT					0x0800
 
 enum {
@@ -81,6 +82,8 @@ struct ther_info {
 	 * mode
 	 */
 	unsigned char mode;
+
+
 
 	/*
 	 * Display
@@ -104,7 +107,11 @@ struct ther_info {
 	unsigned short temp_last_saved;
 	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
 	unsigned long temp_measure_interval;
-	bool has_history_temp;
+
+	bool his_temp_uploading;
+	uint8 *his_temp_bundle;
+	uint16 his_temp_offset;
+	uint16 his_temp_len;
 
 	/* batt */
 	unsigned char batt_percentage;
