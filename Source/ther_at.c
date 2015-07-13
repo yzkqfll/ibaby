@@ -32,6 +32,7 @@
 #include "ther_oled9639_drv.h"
 #include "ther_port.h"
 #include "ther_misc.h"
+#include "ther_data.h"
 
 #define MODULE "[THER AT] "
 
@@ -66,7 +67,10 @@
 
 #define AT_OLED_CONTRAST "AT+CONTRAST="
 
-#define AT_ERASE_ALL_DATA "AT+ERASE"
+#define AT_S_ERASE "AT+SERASE"
+#define AT_S_INFO "AT+SINFO"
+#define AT_S_RESET "AT+SRESET"
+#define AT_S_RESTORE "AT+SRESTORE"
 
 #define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
@@ -252,7 +256,7 @@ static unsigned char at_set_oled9639_contrast(char *ret_buf, unsigned char contr
 	return sprintf((char *)ret_buf, "OK\n");
 }
 
-static unsigned char at_erase_all_data(char *ret_buf)
+static unsigned char at_serase(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
@@ -265,12 +269,47 @@ static unsigned char at_erase_all_data(char *ret_buf)
 		return sprintf((char *)ret_buf, "ERROR\n");
 }
 
+static unsigned char at_sinfo(char *ret_buf)
+{
+	storage_show_info();
+
+	return 0;
+}
+
+static unsigned char at_sreset(char *ret_buf)
+{
+	storage_reset();
+
+	return 0;
+}
+
+static unsigned char at_srestore(char *ret_buf)
+{
+	uint8 *data;
+	uint16 len;
+	uint16 offset = 0;
+	struct temp_data *td;
+
+	storage_restore_temp(&data, &len);
+
+	if (data) {
+		print(LOG_DBG, "get data len %d\n", len);
+		for (offset = 0; offset < len; offset += sizeof(struct temp_data)) {
+			td = (struct temp_data *)(data + offset);
+			print(LOG_DBG, "%d-%02d-%02d %02d:%02d:%02d, temp %lx\n",
+					td->time.year, td->time.month, td->time.day, td->time.hour, td->time.minutes, td->time.seconds,
+					td->temp);
+		}
+	}
+
+	return 0;
+}
+
+
 static unsigned char at_test(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 	bool ret;
-	short delta;
-
 
 //	ther_read_zero_cal_info(&delta);
 //	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
@@ -494,9 +533,21 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 
 		*ret_len = at_set_oled9639_contrast(ret_buf, contrast);
 
-	/* AT+ERASE */
-	} else if (strcmp((char *)cmd_buf, AT_ERASE_ALL_DATA) == 0) {
-		*ret_len = at_erase_all_data(ret_buf);
+	/* AT+SERASE */
+	} else if (strcmp((char *)cmd_buf, AT_S_ERASE) == 0) {
+		*ret_len = at_serase(ret_buf);
+
+	/* AT+SRESET */
+	} else if (strcmp((char *)cmd_buf, AT_S_RESET) == 0) {
+		*ret_len = at_sreset(ret_buf);
+
+	/* AT+SINFO */
+	} else if (strcmp((char *)cmd_buf, AT_S_INFO) == 0) {
+		*ret_len = at_sinfo(ret_buf);
+
+	/* AT+SRESTORE */
+	} else if (strcmp((char *)cmd_buf, AT_S_RESTORE) == 0) {
+		*ret_len = at_srestore(ret_buf);
 
 	} else {
 		at_help();
