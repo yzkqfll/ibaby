@@ -943,7 +943,7 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>thermometer.hex</state>
+          <state>neobay_v0_9.hex</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>
@@ -1115,7 +1115,7 @@
       <name>$PROJ_DIR$\..\Source\ther_buzzer.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\Source\ther_comm.c</name>
+      <name>$PROJ_DIR$\..\Source\ther_data.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_misc.c</name>
