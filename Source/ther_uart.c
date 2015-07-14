@@ -24,6 +24,7 @@
 
 #define MODULE "[UART COMM] "
 
+#if (defined HAL_UART) && (HAL_UART == TRUE)
 static unsigned char log_level = LOG_DBG;
 
 static unsigned char print_buf[UART_TX_BUF_LEN];
@@ -88,7 +89,7 @@ static void ther_uart_data_handle(unsigned char port, unsigned char *buf, unsign
 int print(unsigned char level, char *fmt, ...)
 {
 	va_list args;
-	int n;
+	int n = 0;
 
 	if (level < log_level)
 		return 0;
@@ -124,3 +125,14 @@ void ther_uart_init(unsigned char port, unsigned char baudrate,
 
 	return;
 }
+
+#else
+int print(unsigned char level, char *fmt, ...)
+{
+	return 0;
+}
+void ther_uart_init(unsigned char port, unsigned char baudrate,
+		 void (*data_handle)(char *buf, unsigned char len, char *ret_buf, unsigned char *ret_len))
+{
+}
+#endif
