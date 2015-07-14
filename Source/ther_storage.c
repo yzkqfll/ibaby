@@ -449,7 +449,7 @@ static void his_write_mngt_unit(struct ther_storage *ts, struct mtd_info *m, uin
 	}
 
 	his_encap_mngt_unit(&mu, head_unit, tail_unit);
-	print(LOG_DBG, MODULE "write his_mngt unit %d: his_temp head at %d, tail at %d(%d valid)\n",
+	print(LOG_DBG, MODULE "write his_mngt unit %d: his_temp head at %d, tail at %d(%d)\n",
 			ts->his_mngt_unit, head_unit, tail_unit, his_get_temp_unit_nr(ts));
 	his_write_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
 }
