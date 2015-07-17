@@ -59,7 +59,7 @@ void ther_port_init(void)
 	 *     P1.1  SPI-VCC: gpio, output  -> Not used
 	 *     P1.2  BOOST-EN(spi-vcc/oled-vcc, 3.3v): gpio, output
 	 *     P1.3  BUTTON: gpio, input, 0 default, rising edge interrupt
-	 *     P1.4  SPI-CS: gpio, ouput
+	 *     P1.4  SPI-CS: gpio, ouput  -> Low: active
 	 *     P1.5  SPI-SCK: peripheral mode, USART1 SPI alt.2
 	 *     P1.6  SPI-MOSI: peripheral mode, USART1 SPI alt.2
 	 *     P1.7  SPI-MISO: peripheral mode, USART1 SPI alt.2
@@ -88,13 +88,14 @@ void ther_port_init(void)
 
 	P0SEL = BV(P0_UART_RX_BIT) | BV(P0_UART_TX_BIT);
 	P0DIR = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_TP_BIT);
-	P0INP = 0;
+	P0INP = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_TP_BIT);
 	APCFG = BV(P0_AIN0_BIT) | BV(P0_AIN1_BIT) | BV(P0_ADCREF_BIT);
 
 	P1SEL = BV(P1_BUZZER_BIT) | BV(P1_SPI_SCK_BIT) | BV(P1_SPI_MOSI_BIT) | BV(P1_SPI_MISO_BIT);
-	P1DIR = BV(P1_SPI_VCC_BIT) | BV(P1_BOOST_EN_BIT) | BV(P1_SPI_CS_BIT);
+	P1DIR = BV(P1_BUZZER_BIT) | BV(P1_SPI_VCC_BIT) | BV(P1_BOOST_EN_BIT) | BV(P1_SPI_CS_BIT);
 	P1INP = BV(P1_BUTTON_BIT);
 
+//	PICTL |= BV(1);
 	IEN2 |= BV(4); /* P1 interrupt enable, use |= instead of = */
 	P1IEN = BV(P1_BUTTON_BIT); /* enable interrupt */
 	P1IFG = 0; /* clear the pending flag */
@@ -103,10 +104,10 @@ void ther_port_init(void)
 
 	P2SEL = 0;
 	P2DIR = BV(P2_OLED_VDDEN_BIT) | BV(P2_LDO_EN_BIT) | BV(P2_SPI_WP_BIT);
-	P2INP = BV(5); /* P0 pulldown */
+	P2INP = BV(P2_OLED_VDDEN_BIT) | BV(5); /* P0 pulldown, P1,P2 pullup */
 
 	P0 = 0;
-	P1 = 0;
+	P1 = BV(P1_SPI_CS_BIT); /* de-active SPI */
 	P2 = 0;
 }
 
