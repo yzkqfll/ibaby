@@ -96,7 +96,7 @@ static const char *gap_state_str[] = {
 #define BLE_DISCOVERABLE_MODE           GAP_ADTYPE_FLAGS_GENERAL
 
 // Minimum connection interval (units of 1.25ms) if automatic parameter update request is enabled
-#define BLE_MIN_CONN_INTERVAL     200
+#define BLE_MIN_CONN_INTERVAL     800
 
 // Maximum connection interval (units of 1.25ms) if automatic parameter update request is enabled
 #define BLE_MAX_CONN_INTERVAL     1600
@@ -306,6 +306,20 @@ static void ble_setup_gap(struct ble_info *bi)
 
 	// Set the GAP Characteristics
 	GGS_SetParameter(GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName);
+
+	{
+		  // Set connection parameters:
+		  {
+		    uint16 connectionInterval = 10;
+//		    uint16 slaveLatency = APP_SLAVE_LATENCY;
+//		    uint16 timeout = APP_CONN_TIMEOUT;
+
+		    VOID GAP_SetParamValue( TGAP_CONN_EST_INT_MIN, connectionInterval );
+		    VOID GAP_SetParamValue( TGAP_CONN_EST_INT_MAX, connectionInterval );
+//		    VOID GAP_SetParamValue( TGAP_CONN_EST_LATENCY, slaveLatency );
+//		    VOID GAP_SetParamValue( TGAP_CONN_EST_SUPERV_TIMEOUT, timeout );
+		  }
+	}
 }
 
 /*
@@ -401,10 +415,10 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 	/* init param */
 	bi->advertising_enable = TRUE;
 	bi->advertising_off_time = 2000;
-	bi->update_request_enable = FALSE;
+	bi->update_request_enable = TRUE;
 	bi->min_connection_interval = BLE_MIN_CONN_INTERVAL;
 	bi->max_connection_interval = BLE_MAX_CONN_INTERVAL;
-	bi->slave_latency = 1;
+	bi->slave_latency = 5;
 	bi->connection_timeout = 1000;
 
 	ble_setup_gap(bi);
