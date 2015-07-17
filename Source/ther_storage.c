@@ -30,6 +30,7 @@
 #include "ther_port.h"
 #include "ther_misc.h"
 #include "ther_data.h"
+#include "ther_crc.h"
 
 #define MODULE "[STORAGE] "
 
@@ -58,7 +59,7 @@ enum {
 struct sys_info {
 	unsigned short magic;
 	unsigned short storage_formated;
-	unsigned short crc;
+	uint8 crc;
 };
 
 /*
@@ -69,7 +70,7 @@ struct zero_cal {
 	unsigned short magic;
     unsigned short hw_adc0;
     short delta;
-    unsigned short crc;
+    uint8 crc;
 };
 
 #define TEMP_CAL_MAGIC 0xF00D
@@ -77,7 +78,7 @@ struct temp_cal {
 	unsigned short magic;
 	float R25_delta;
 	float B_delta;
-	unsigned short crc;
+	uint8 crc;
 };
 
 /*
@@ -95,6 +96,7 @@ struct his_mngt_unit {
 
 	uint16 his_temp_head_unit;
 	uint16 his_temp_tail_unit;
+	uint8 crc;
 };
 
 #define HIS_TEMP_UNIT_MAGIC 0x1909
@@ -103,6 +105,7 @@ struct his_temp_unit {
 	struct his_unit header;
 
 	uint16 data_len;
+	uint8 crc; /* crc of data */
 
 	/* temp info here */
 };
@@ -423,6 +426,7 @@ static void his_encap_mngt_unit(struct his_mngt_unit *mu, uint16 head_unit, uint
 	mu->header.status = ERASED_UINT16;
 	mu->his_temp_head_unit = head_unit;
 	mu->his_temp_tail_unit = tail_unit;
+	mu->crc = crc7_be(0, (const uint8 *)mu, OFFSET(struct his_mngt_unit, crc));
 }
 
 static void his_write_mngt_unit(struct ther_storage *ts, struct mtd_info *m, uint16 head_unit, uint16 tail_unit)
@@ -461,6 +465,7 @@ static void his_write_temp_unit(struct ther_storage *ts, struct mtd_info *m)
 	tu->header.magic = HIS_TEMP_UNIT_MAGIC;
 	tu->header.status = ERASED_UINT16;
 	tu->data_len = ts->offset - sizeof(struct his_temp_unit);
+	tu->crc = crc7_be(0, (const uint8 *)(tu + 1), tu->data_len);
 
 	if (tu->data_len) {
 		his_enqueue_temp_unit(ts, m, tu);
@@ -526,6 +531,7 @@ static bool his_init_mngt(struct ther_storage *ts, struct mtd_info*m)
 	unsigned char obsoleted = 0;
 	struct his_mngt_unit mu;
 	bool exit = FALSE;
+	uint8 crc;
 
 	print(LOG_ERR, MODULE "scan his_mngt area\n");
 
@@ -547,6 +553,13 @@ static bool his_init_mngt(struct ther_storage *ts, struct mtd_info*m)
 
 			/* get his_temp head & tail unit */
 			his_read_unit(ts, m, HIS_MNGT, ts->his_mngt_unit, (uint8 *)&mu, sizeof(mu));
+			crc = crc7_be(0, (const uint8 *)&mu, OFFSET(struct his_mngt_unit, crc));
+			if (crc != mu.crc) {
+				print(LOG_DBG, MODULE "his_mngt_unit crc error: calculated 0x%x, saved 0x%x\n",
+												crc, mu.crc);
+				break;
+			}
+
 			ts->his_temp_head_unit = mu.his_temp_head_unit;
 			ts->his_temp_tail_unit = mu.his_temp_tail_unit;
 
@@ -670,7 +683,7 @@ bool storage_save_temp(uint8 *data, uint16 len)
 		his_write_temp_unit(ts, m);
 	}
 
-	print(LOG_DBG, MODULE "Store: %d-%02d-%02d %02d:%02d:%02d, temp %ld, (offset %d, len %d)\n",
+	print(LOG_DBG, MODULE "Store: %d-%02d-%02d %02d:%02d:%02d, temp %ld, (at offset %d, len %d)\n",
 				td->year, td->month, td->day, td->hour, td->minutes, td->seconds,
 				td->temp & 0xFFFFFF,
 				ts->offset, len);
@@ -685,11 +698,18 @@ void storage_restore_temp(uint8 **buf, uint16 *len)
 	struct ther_storage *ts = get_ts();
 	struct mtd_info *m = get_mtd();
 	struct his_temp_unit *tu;
+	uint8 crc;
 
 	*buf = NULL;
 	*len = 0;
 	while (his_get_temp_unit_nr(ts) > 0) {
 		if (his_dequeue_temp_unit(ts, m, &tu)) {
+			crc = crc7_be(0, (const uint8 *)(tu + 1), tu->data_len);
+			if (tu->crc != crc) {
+				print(LOG_DBG, MODULE "temp crc error: calculated 0x%x, saved 0x%x\n",
+						crc, tu->crc);
+				continue;
+			}
 			*buf = (uint8 *)tu + sizeof(struct his_temp_unit);;
 			*len = tu->data_len;
 			break;
@@ -749,6 +769,7 @@ bool storage_write_zero_cal(unsigned short hw_adc0, short delta)
 
 	zc.hw_adc0 = hw_adc0;
 	zc.delta = delta;
+	zc.crc = crc7_be(0, (const uint8 *)&zc, OFFSET(struct zero_cal, crc));
 
 	if (ther_mtd_write(m, addr, &zc, sizeof(zc), NULL))
 		ret = FALSE;
@@ -764,6 +785,7 @@ bool storage_read_zero_cal(short *delta)
 	int8 ret = TRUE;
 	uint32 addr = SECTOR_ZERO_CAL * m->erase_size;
 	struct zero_cal zc;
+	uint8 crc;
 
 	if (ther_mtd_open(m))
 		return FALSE;
@@ -772,10 +794,12 @@ bool storage_read_zero_cal(short *delta)
 		*delta = 0;
 		ret = FALSE;
 	} else {
-		if (zc.delta == 0xFFFF)
-			*delta = 0;
-		else
+
+		crc = crc7_be(0, (const uint8 *)&zc, OFFSET(struct zero_cal, crc));
+		if (crc == zc.crc)
 			*delta = zc.delta;
+		else
+			*delta = 0;
 	}
 
 	ther_mtd_close(m);
@@ -789,12 +813,20 @@ bool storage_is_formated(void)
 	struct sys_info info;
 	bool ret = FALSE;
 	uint32 addr = m->erase_size * SECTOR_SYS;
+	uint8 crc;
 
 	if (ther_mtd_open(m))
 		return ret;
 
 	if (ther_mtd_read(m, addr, &info, sizeof(info), NULL)) {
 		print(LOG_ERR, MODULE "fail to read sys_info at addr 0x%x\n", addr);
+		goto out;
+	}
+
+	crc = crc7_be(0, (const uint8 *)&info, OFFSET(struct sys_info, crc));
+	if (info.crc != crc) {
+		print(LOG_DBG, MODULE "sys_info crc error: calculated 0x%x, saved 0x%x\n",
+								crc, info.crc);
 		goto out;
 	}
 
@@ -826,6 +858,8 @@ bool storage_format(void)
 	addr = m->erase_size * SECTOR_SYS;
 	info.magic = SYS_MAGIC;
 	info.storage_formated = STORAGE_FORMATED_FLAG;
+	info.crc = crc7_be(0, (const uint8 *)&info, OFFSET(struct sys_info, crc));
+
 	if (ther_mtd_write(m, addr, &info, sizeof(info), NULL)) {
 		goto out;
 	}
