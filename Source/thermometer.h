@@ -75,6 +75,7 @@ struct ther_info {
 	uint8 task_id;
 
 	unsigned char power_mode;
+	uint8 lock_users;
 
 	bool ble_connect;
 
@@ -82,8 +83,6 @@ struct ther_info {
 	 * mode
 	 */
 	unsigned char mode;
-
-
 
 	/*
 	 * Display
@@ -123,6 +122,8 @@ struct ther_info {
 extern struct ther_info ther_info;
 
 struct ther_info *get_ti(void);
+void ther_wake_lock(void);
+void ther_wake_unlock(void);
 
 /*********************************************************************
  * MACROS

@@ -87,7 +87,7 @@ struct ther_info ther_info;
  * Temp measurement
  */
 #define TEMP_POWER_SETUP_TIME 10 /* ms */
-#define TEMP_MEASURE_INTERVAL SEC_TO_MS(3)
+#define TEMP_MEASURE_INTERVAL SEC_TO_MS(5)
 #define TEMP_MEASURE_MIN_INTERVAL SEC_TO_MS(1)
 
 #define HIS_TEMP_RESTORE_DELAY 500
@@ -365,7 +365,7 @@ static void ther_dispatch_msg(struct ther_info *ti, osal_event_hdr_t *msg)
 	}
 }
 
-static void ther_display_event_report(unsigned char event, unsigned short param)
+static void ther_display_event_report(unsigned char event, uint16 arg)
 {
 	struct ther_info *ti = &ther_info;
 
@@ -373,27 +373,26 @@ static void ther_display_event_report(unsigned char event, unsigned short param)
 	case OLED_EVENT_DISPLAY_ON:
 		/* change temp measure to 1 sec */
 //		change_measure_timer(ti, TEMP_MEASURE_MIN_INTERVAL);
-		ti->display_picture = param;
+		ti->display_picture = arg;
 		break;
 
 	case OLED_EVENT_TIME_TO_END:
 //		change_measure_timer(ti, TEMP_MEASURE_INTERVAL);
 		if (ti->display_picture == OLED_PICTURE_WELCOME) {
-			/* show first picture after welcome */
 			struct display_param param;
 
+			/*
+			 * show first picture after welcome
+			 */
 			encap_first_picture_param(ti, &param);
 			oled_show_picture(&param);
+
 		} else {
 			ti->display_picture = OLED_PICTURE_NONE;
-			oled_display_power_off();
 		}
-
 		break;
 
 	}
-
-
 }
 
 static void ther_device_init(struct ther_info *ti)
@@ -416,11 +415,11 @@ static void ther_device_init(struct ther_info *ti)
 	print(LOG_INFO, "  All rights reserved.\r\n");
 	print(LOG_INFO, "-------------------------------------\r\n");
 
-	/* button init */
-	ther_button_init(ti->task_id);
-
 	/* buzzer init */
 	ther_buzzer_init(ti->task_id);
+
+	/* button init */
+	ther_button_init(ti->task_id);
 
 	/* oled display init */
 	oled_display_init(ti->task_id, ther_display_event_report);
@@ -470,7 +469,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	/*
 	 * play music
 	 */
-	ther_buzzer_play_music(BUZZER_MUSIC_SYS_POWER_ON);
+	ther_buzzer_start_music(BUZZER_MUSIC_SYS_POWER_ON);
 
 	/*
 	 * show welcome picture
@@ -490,7 +489,6 @@ static void ther_system_power_on(struct ther_info *ti)
 	 * batt measure
 	 */
 	osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
-
 
 	/* test */
 //	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
@@ -517,7 +515,7 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	 * play power off music
 	 */
 	ther_buzzer_stop_music();
-	ther_buzzer_play_music(BUZZER_MUSIC_SYS_POWER_OFF);
+	ther_buzzer_start_music(BUZZER_MUSIC_SYS_POWER_OFF);
 
 	/*
 	 * oled says goodbye
@@ -625,9 +623,10 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 			if (ti->ble_connect) {
 				if (ti->temp_notification_enable) {
-					ther_send_temp_notify(ti->temp_current);
-				} else if (ti->temp_indication_enable) {
-//					ther_send_temp_indicate(ti->task_id, ti->temp_current);
+//					ther_send_temp_notify(ti->temp_current);
+				}
+				if (ti->temp_indication_enable) {
+					ther_send_temp_indicate(ti->task_id, ti->temp_current);
 				}
 			} else {
 				ther_save_temp_to_local(ti->temp_current);
@@ -651,7 +650,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 	if (events & TH_HIS_TEMP_RESTORE_EVT) {
 		if (!ti->his_temp_bundle) {
-			if (ti->temp_indication_enable) {
+			if (ti->temp_notification_enable) {
 				storage_restore_temp((uint8 **)&ti->his_temp_bundle, &ti->his_temp_len);
 				if (ti->his_temp_bundle) {
 					ti->his_temp_offset = 0;
@@ -666,7 +665,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				ti->his_temp_uploading = FALSE;
 
 			} else {
-//				print(LOG_DBG, MODULE "his temp restore: wait for indication enable\n");
+//				print(LOG_DBG, MODULE "his temp restore: wait for notify enable\n");
 				osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_RESTORE_WAIT_ENABLE);
 			}
 
@@ -699,7 +698,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 	/* buzzer event */
 	if (events & TH_BUZZER_EVT) {
-		ther_buzzer_check_music();
+		ther_buzzer_playing_music();
 
 		return (events ^ TH_BUZZER_EVT);
 	}
@@ -722,7 +721,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	if (events & TH_TEST_EVT) {
 //		oled_picture_inverse();
 
-		print(LOG_DBG, MODULE "live\n");
+//		print(LOG_DBG, MODULE "live\n");
 
 //		oled_show_temp(TRUE, ti->current_temp);
 
@@ -758,12 +757,14 @@ void Thermometer_Init(uint8 task_id)
 {
 	struct ther_info *ti = &ther_info;
 
+	osal_memset(ti, 0, sizeof(struct ther_info));
+
 	ti->task_id = task_id;
 
 	ti->power_mode = PM_ACTIVE;
 
 //	start_watchdog_timer();
-	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
+//	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
 
 	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 }
@@ -771,9 +772,36 @@ void Thermometer_Init(uint8 task_id)
 /*
  * Just for compiling
  */
-void HalLedEnterSleep(void) {}
+void HalLedEnterSleep(void) {
+
+}
 
 /*
  * Just for compiling
  */
-void HalLedExitSleep(void) {}
+void HalLedExitSleep(void) {
+
+}
+
+void ther_wake_lock(void)
+{
+	struct ther_info *ti = &ther_info;
+
+	if (ti->lock_users == 0) {
+		osal_pwrmgr_task_state(ti->task_id, PWRMGR_HOLD);
+	}
+	ti->lock_users++;
+}
+
+void ther_wake_unlock(void)
+{
+	struct ther_info *ti = &ther_info;
+
+	ti->lock_users--;
+	if (ti->lock_users == 0) {
+		osal_pwrmgr_task_state(ti->task_id, PWRMGR_CONSERVE);
+	}
+}
+
+
+
