@@ -8,7 +8,14 @@
 struct temp_data {
 	uint8 flag;
 	uint32 temp;
-	UTCTimeStruct time; /* 7 Bytes */
+
+	uint16 year;    // 2000+
+	uint8 month;    // 0-11
+	uint8 day;      // 0-30
+	uint8 hour;     // 0-23
+	uint8 minutes;  // 0-59
+	uint8 seconds;  // 0-59
+
 	uint8 type;
 };
 

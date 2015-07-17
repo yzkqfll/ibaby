@@ -81,7 +81,12 @@ static void encap_temp_data(struct temp_data *td, unsigned char flag, unsigned s
 		// Get time structure from OSAL
 		osal_ConvertUTCTime(&time, osal_getClock());
 
-		td->time = time;
+		td->year = time.year;
+		td->month = time.month;
+		td->day = time.day;
+		td->hour = time.hour;
+		td->minutes = time.minutes;
+		td->seconds = time.seconds;
 	}
 
     /* type */
@@ -146,7 +151,7 @@ void ther_save_temp_to_local(unsigned short temp)
 	storage_save_temp((uint8 *)&td, sizeof(td));
 }
 
-void ther_send_history_temp(unsigned char task_id, uint8 *data, uint8 len)
+void ther_send_history_temp2(unsigned char task_id, uint8 *data, uint8 len)
 {
 	attHandleValueInd_t indicate;
 	struct temp_data *td = (struct temp_data *)data;
@@ -156,10 +161,28 @@ void ther_send_history_temp(unsigned char task_id, uint8 *data, uint8 len)
 	indicate.handle = THERMOMETER_TEMP_VALUE_POS;
 
 	print(LOG_DBG, MODULE "Upload: %d-%02d-%02d %02d:%02d:%02d, temp %ld, %s\n",
-			td->time.year, td->time.month, td->time.day, td->time.hour, td->time.minutes, td->time.seconds,
+			td->year, td->month, td->day, td->hour, td->minutes, td->seconds,
 			td->temp & 0xFFFFFF, ther_type[td->type]);
 
 	Thermometer_TempIndicate(ble_get_gap_handle(), &indicate, task_id);
+
+	return;
+}
+
+void ther_send_history_temp(unsigned char task_id, uint8 *data, uint8 len)
+{
+	attHandleValueNoti_t notify;
+	struct temp_data *td = (struct temp_data *)data;
+
+	memcpy(notify.value, data, len);
+	notify.len = len;
+//	indicate.handle = THERMOMETER_TEMP_VALUE_POS;  // notify do not need this
+
+	print(LOG_DBG, MODULE "Upload: %d-%02d-%02d %02d:%02d:%02d, temp %ld, %s\n",
+			td->year, td->month, td->day, td->hour, td->minutes, td->seconds,
+			td->temp & 0xFFFFFF, ther_type[td->type]);
+
+	Thermometer_IMeasNotify(ble_get_gap_handle(), &notify);
 
 	return;
 }
