@@ -32,6 +32,7 @@ enum WDT_MODE {
 	WDT_MODE_TIMER,
 };
 
+/* interval */
 #define WDT_INT_MASK 0x3
 #define WDT_INT_OFFSET 0
 enum {
@@ -48,8 +49,7 @@ void start_watchdog_timer(void)
 
 void feed_watchdog(void)
 {
-	WDCTL = 0xA0;
-	WDCTL = 0x50;
+	WD_KICK();
 }
 
 void delay(uint32 cnt)
@@ -63,3 +63,18 @@ void delay(uint32 cnt)
 	}
 #endif
 }
+
+static const char *reset_reason[] = {
+	"Power-on reset and brownout detection",
+	"External reset",
+	"Watchdog Timer reset",
+	"Clock loss reset"
+};
+
+const char *get_reset_reason(void)
+{
+	uint8 reason = (SLEEPSTA >> 3) & 0X3;
+
+	return reset_reason[reason];
+}
+

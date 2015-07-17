@@ -408,6 +408,7 @@ static void ther_device_init(struct ther_info *ti)
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION);
 	print(LOG_INFO, "      %s, %s\n",
 			__DATE__, __TIME__);
+	print(LOG_INFO, "  by <%s>\n", get_reset_reason());
 
 	delay(UART_WAIT);
 	print(LOG_INFO, "\n");
@@ -537,7 +538,7 @@ static void ther_system_power_off_post(struct ther_info *ti)
 	 * do not stop wd timer here,
 	 * so the wd timer will be auto running after power on
 	 */
-/*	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);*/
+//	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);
 
 	ti->power_mode = PM_3;
 	/* go to PM3 */
@@ -763,8 +764,8 @@ void Thermometer_Init(uint8 task_id)
 
 	ti->power_mode = PM_ACTIVE;
 
-//	start_watchdog_timer();
-//	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
+	start_watchdog_timer();
+	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
 
 	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 }

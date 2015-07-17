@@ -89,8 +89,6 @@ static const unsigned short musics[BUZZER_MUSIC_NR][LEN] =  {
 
 static void start_buzzer(unsigned char tone)
 {
-	struct ther_buzzer *b = &buzzer;
-
 	ther_wake_lock();
 
 	switch (tone) {
