@@ -16,6 +16,8 @@
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_drivers.h"
+#include "OSAL_PwrMgr.h"
+#include "OSAL.H"
 
 #include "ther_uart.h"
 
@@ -63,17 +65,22 @@ enum {
 struct ther_buzzer {
 	unsigned char task_id;
 
-	unsigned char music_book;
+	unsigned char music;
 	unsigned char cur_step;
+	bool pwm_on;
 };
-struct ther_buzzer buzzer;
+static struct ther_buzzer buzzer;
 
 /*
  * music book
  */
-#define TONE_OFFSET 0
 #define LEN 5
-static const unsigned short music_books[BUZZER_MUSIC_NR][LEN] =  {
+
+#define TONE_OFFSET 0
+#define STEP_START 1
+#define STEP_END (LEN - 1)
+
+static const unsigned short musics[BUZZER_MUSIC_NR][LEN] =  {
 	TONE_HIGH, 300, 200, 200, 100, /* power on */
 	TONE_HIGH, 300, 200, 200, 100, /* power off */
 	TONE_LOW, 400, 200, 300, 100,  /* send temp */
@@ -82,6 +89,10 @@ static const unsigned short music_books[BUZZER_MUSIC_NR][LEN] =  {
 
 static void start_buzzer(unsigned char tone)
 {
+	struct ther_buzzer *b = &buzzer;
+
+	ther_wake_lock();
+
 	switch (tone) {
 	case TONE_LOW:
 	    /* Buzzer is "rung" by using T4, channel 0 to generate 2kHz square wave */
@@ -122,62 +133,78 @@ static void start_buzzer(unsigned char tone)
  */
 static void stop_buzzer(void)
 {
-	P1_BUZZER_PIN = 0;
-
 	/* Setting T4CTL to 0 disables it and masks the overflow interrupt */
 	T4CTL = 0;
 
+	P1_BUZZER_PIN = 1;
+
 	/* Return output pin to GPIO */
 //	P1SEL &= (uint8) ~HAL_BUZZER_P1_GPIO_PINS;
+
+	ther_wake_unlock();
 }
 
-void ther_buzzer_play_music(unsigned char music_book)
+void ther_buzzer_start_music(unsigned char music)
 {
 	struct ther_buzzer *b = &buzzer;
+	unsigned char tone;
 
-//	print(LOG_DBG, MODULE "play music %d\n", music);
+	if (b->cur_step != 0)
+		return;
 
-	b->music_book = music_book;
-	b->cur_step = 0;
+	print(LOG_DBG, MODULE "start music %d\n", music);
 
-	osal_start_timerEx(b->task_id, TH_BUZZER_EVT, 200);
+	b->music = music;
+	b->cur_step = STEP_START;
+	tone = musics[b->music][TONE_OFFSET];
+	start_buzzer(tone);
+	osal_start_timerEx(b->task_id, TH_BUZZER_EVT, musics[b->music][b->cur_step]);
 }
 
 void ther_buzzer_stop_music(void)
 {
 	struct ther_buzzer *b = &buzzer;
 
-	print(LOG_DBG, MODULE "stop music %d\n");
+	if (b->cur_step == 0)
+		return;
 
-	if (b->cur_step) {
-		osal_stop_timerEx(b->task_id, TH_BUZZER_EVT);
+	print(LOG_DBG, MODULE "stop music %d\n", b->music);
 
+	osal_stop_timerEx(b->task_id, TH_BUZZER_EVT);
+
+	if (b->cur_step % 2)
 		stop_buzzer();
-		b->cur_step = 1;
-	}
+
+	b->cur_step = 0;
 }
 
-void ther_buzzer_check_music(void)
+void ther_buzzer_playing_music(void)
 {
 	struct ther_buzzer *b = &buzzer;
 	unsigned char tone;
 
-	if (b->cur_step < LEN) {
-		if (b->cur_step % 2 != 0) {
-			/* buzzer */
-			tone = music_books[b->music_book][TONE_OFFSET];
-			start_buzzer(tone);
-		} else {
-			/* slient */
-			stop_buzzer();
-		}
-
-		osal_start_timerEx(b->task_id, TH_BUZZER_EVT, music_books[b->music_book][b->cur_step]);
-
-		b->cur_step++;
-	} else {
-		b->cur_step = 1;
+	if (b->cur_step == 0) {
+		print(LOG_DBG, MODULE "why cur step is %d ??\n", b->cur_step);
 	}
+
+	b->cur_step++;
+
+	if (b->cur_step == STEP_END) {
+		print(LOG_DBG, MODULE "end music %d\n", b->music);
+		stop_buzzer();
+		b->cur_step = 0;
+		return;
+	}
+
+	if (b->cur_step % 2) {
+		tone = musics[b->music][TONE_OFFSET];
+		start_buzzer(tone);
+
+	} else {
+		stop_buzzer();
+	}
+
+	osal_start_timerEx(b->task_id, TH_BUZZER_EVT, musics[b->music][b->cur_step]);
 }
 
 void ther_buzzer_init(unsigned char task_id)
@@ -186,7 +213,28 @@ void ther_buzzer_init(unsigned char task_id)
 
 	print(LOG_INFO, MODULE "buzzer init\n");
 
+	osal_memset(b, 0, sizeof(struct ther_buzzer));
+
 	b->task_id = task_id;
 
-	P1_BUZZER_PIN = 0;
+	P1_BUZZER_PIN = 1;
 }
+
+void ther_buzzer_exit(void)
+{
+	struct ther_buzzer *b = &buzzer;
+
+	print(LOG_INFO, MODULE "buzzer exit\n");
+
+	/*
+	 * logic ok?
+	 */
+	osal_stop_timerEx(b->task_id, TH_BUZZER_EVT);
+//	osal_clear_event(b->task_id, TH_BUZZER_EVT);
+
+	if (b->cur_step >= STEP_START && b->cur_step <= STEP_END) {
+		if (b->cur_step % 2)
+			stop_buzzer();
+	}
+}
+
