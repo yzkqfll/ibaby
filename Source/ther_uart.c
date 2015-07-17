@@ -25,6 +25,7 @@
 #define MODULE "[UART COMM] "
 
 #if (defined HAL_UART) && (HAL_UART == TRUE)
+
 static unsigned char log_level = LOG_DBG;
 
 static unsigned char print_buf[UART_TX_BUF_LEN];
@@ -38,7 +39,7 @@ struct ther_uart {
 
 	void (*data_handle)(char *buf, unsigned char len, char *ret_buf, unsigned char *ret_len);
 };
-struct ther_uart ther_uart[UART_PORT_NR];
+static struct ther_uart ther_uart[UART_PORT_NR];
 
 #define PRINT_PORT UART_PORT_0
 
@@ -120,8 +121,6 @@ void ther_uart_init(unsigned char port, unsigned char baudrate,
 	tu->data_handle = data_handle;
 
 	uart_drv_init(port, baudrate, ther_uart_data_handle);
-
-//	print(LOG_INFO, MODULE "uart init ok\n");
 
 	return;
 }
