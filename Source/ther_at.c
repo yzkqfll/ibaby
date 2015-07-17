@@ -297,7 +297,7 @@ static unsigned char at_srestore(char *ret_buf)
 		for (offset = 0; offset < len; offset += sizeof(struct temp_data)) {
 			td = (struct temp_data *)(data + offset);
 			print(LOG_DBG, "%d-%02d-%02d %02d:%02d:%02d, temp %lx\n",
-					td->time.year, td->time.month, td->time.day, td->time.hour, td->time.minutes, td->time.seconds,
+					td->year, td->month, td->day, td->hour, td->minutes, td->seconds,
 					td->temp);
 		}
 	}

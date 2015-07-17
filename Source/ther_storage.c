@@ -671,7 +671,7 @@ bool storage_save_temp(uint8 *data, uint16 len)
 	}
 
 	print(LOG_DBG, MODULE "Store: %d-%02d-%02d %02d:%02d:%02d, temp %ld, (offset %d, len %d)\n",
-				td->time.year, td->time.month, td->time.day, td->time.hour, td->time.minutes, td->time.seconds,
+				td->year, td->month, td->day, td->hour, td->minutes, td->seconds,
 				td->temp & 0xFFFFFF,
 				ts->offset, len);
 	memcpy(ts->temp_write_buf + ts->offset, data, len);
