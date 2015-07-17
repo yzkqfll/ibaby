@@ -18,6 +18,7 @@
 #include "OSAL.h"
 #include "hal_board.h"
 #include "OSAL_Clock.h"
+#include "OSAL_PwrMgr.h"
 
 #include "ther_uart.h"
 
@@ -30,43 +31,53 @@
 enum {
 
 	STATE_POWER_OFF,
-	STATE_VDD_ON,
-	STATE_DISPLAY_ON,
 
-	STATE_VCC_OFF,
-	STATE_VDD_OFF,
+	STATE_INIT_VDD_VCC,
+	STATE_INIT_DEVICE,
+	STATE_DISPLAY_ON,
+	STATE_DISPLAY_END,
+
+	STATE_EXIT_VCC,
+	STATE_EXIT_VDD,
 };
 
+static const char *state[] = {
+	"power off",
+	"init vddvcc",
+	"init device",
+	"display on",
+	"display end",
+	"exit vcc",
+	"exit vdd",
+};
 
-#define DISPLAY_PREPARE_TIME 20 /* ms */
-#define DISPLAY_DELAY_AFTER_VDD_ON 30 /* ms */
-#define DISPLAY_DELAY_AFTER_VCC_ON 100 /* ms */
-#define DISPLAY_DELAY_AFTER_VCC_OFF 100 /* ms */
+#define DISPLAY_10MS 10 /* ms */
+#define DISPLAY_INIT_VCC_VDD_TIME 30 /* ms */
+#define DISPLAY_INIT_DEVICE_TIME 100 /* ms */
+#define DISPLAY_EXIT_VCC_TIME 100 /* ms */
 
 struct oled_display {
 	uint8 task_id;
 
-	unsigned char state;
-
+	uint8 cur_state;
 	bool powering_off;
 
-	unsigned char picture;
+	uint8 picture;
 	unsigned short remain_ms;
 
-	/* first picture */
+	/* first picture param */
 	bool ble_link;
 	unsigned short temp;
 	unsigned short time;
 	unsigned char batt_level;
 
-	/* second picture */
+	/* second picture param */
 
+	/* report event to ther */
 	void (*event_report)(unsigned char event, unsigned short param);
 };
 
-static struct oled_display display = {
-	.state = STATE_POWER_OFF,
-};
+static struct oled_display display;
 
 /*
  * ROW * COL
@@ -266,7 +277,6 @@ void oled_test(void)
 	oled_drv_fill_block(4, MAX_PAGE, 0, MAX_COL, 0);
 }
 
-
 static void oled_display_draw_picture(struct oled_display *od)
 {
 	oled_drv_fill_block(0, MAX_PAGE, 0, MAX_COL, 0);
@@ -319,8 +329,8 @@ static void update_first_picture(unsigned char type, unsigned short val)
 {
 	struct oled_display *od = &display;
 
-	if (od->state != STATE_DISPLAY_ON) {
-		print(LOG_WARNING, MODULE "update_first_picture(): err, state is %d\n", od->state);
+	if (od->cur_state != STATE_DISPLAY_ON) {
+		print(LOG_WARNING, MODULE "update_first_picture(): err, state is %d\n", od->cur_state);
 		return;
 	}
 
@@ -381,7 +391,8 @@ void oled_show_picture(struct display_param *param)
 
 	od->picture = param->picture;
 	od->remain_ms = param->remain_ms;
-	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_PREPARE_TIME);
+	osal_stop_timerEx(od->task_id, TH_DISPLAY_EVT);
+	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
 }
 
 void oled_show_next_picture(unsigned short time_ms)
@@ -392,67 +403,140 @@ void oled_show_next_picture(unsigned short time_ms)
 	od->remain_ms = time_ms;
 
 	osal_stop_timerEx(od->task_id, TH_DISPLAY_EVT);
-	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_PREPARE_TIME);
+	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
 }
+
 
 void oled_display_power_off(void)
 {
 	struct oled_display *od = &display;
 
-	oled_drv_display_off();
+	if (od->cur_state != STATE_POWER_OFF) {
+		osal_stop_timerEx(od->task_id, TH_DISPLAY_EVT);
 
-	oled_drv_charge_pump_disable();
-
-	oled_drv_power_off_vcc();
-
-	od->state = STATE_VCC_OFF;
-	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VCC_OFF);
+		od->powering_off = TRUE;
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
+	}
 }
+
+static uint8 get_next_state(struct oled_display *od, uint8 cur_state)
+{
+	uint8 next_state;
+
+	switch (cur_state) {
+	case STATE_POWER_OFF:
+		if (od->remain_ms != 0)
+			next_state = STATE_INIT_VDD_VCC;
+		break;
+
+	case STATE_INIT_VDD_VCC:
+		next_state = STATE_INIT_DEVICE;
+		break;
+
+	case STATE_INIT_DEVICE:
+		next_state = STATE_DISPLAY_ON;
+		break;
+
+	case STATE_DISPLAY_ON:
+//		if (od->powering_off) {
+//			next_state = STATE_EXIT_VCC;
+//		}
+
+		if (od->remain_ms == 0)
+			next_state = STATE_DISPLAY_END;
+		else
+			next_state = STATE_DISPLAY_ON;
+
+		break;
+
+	case STATE_DISPLAY_END:
+		if (od->remain_ms == 0)
+			next_state = STATE_EXIT_VCC;
+		else
+			next_state = STATE_DISPLAY_ON;
+		break;
+
+	case STATE_EXIT_VCC:
+		next_state = STATE_EXIT_VDD;
+		break;
+
+	case STATE_EXIT_VDD:
+		next_state = STATE_POWER_OFF;
+		break;
+
+	default:
+		break;
+	}
+
+	return next_state;
+}
+
+#include "hal_i2c.h"
 
 void oled_display_state_machine(void)
 {
 	struct oled_display *od = &display;
 
-	switch (od->state) {
-	/*
-	 * Power On sequence
-	 */
+	print(LOG_DBG, MODULE "goto state <%s>\n",
+			state[get_next_state(od, od->cur_state)]);
+
+	od->cur_state = get_next_state(od, od->cur_state);
+
+	switch (od->cur_state) {
 	case STATE_POWER_OFF:
+		break;
+
+	case STATE_INIT_VDD_VCC:
 		oled_drv_power_on_vdd();
 		oled_drv_power_on_vcc();
 
-		od->state = STATE_VDD_ON;
-		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VDD_ON);
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_INIT_VCC_VDD_TIME);
 		break;
 
-	case STATE_VDD_ON:
+	case STATE_INIT_DEVICE:
+		ther_wake_lock();
+
 		oled_drv_init_device();
 
-		od->state = STATE_DISPLAY_ON;
-		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_DELAY_AFTER_VCC_ON);
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_INIT_DEVICE_TIME);
 		break;
 
 	case STATE_DISPLAY_ON:
+		oled_display_draw_picture(od);
 
-		if (od->remain_ms == 0) {
-			od->event_report(OLED_EVENT_TIME_TO_END, od->picture);
-
-		} else {
-			oled_display_draw_picture(od);
-
-			osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, od->remain_ms);
-			od->event_report(OLED_EVENT_DISPLAY_ON, od->picture);
-			od->remain_ms = 0;
-		}
-
+		od->event_report(OLED_EVENT_DISPLAY_ON, od->picture);
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, od->remain_ms);
+		od->remain_ms = 0;
 		break;
 
-	case STATE_VCC_OFF:
-		oled_drv_power_off_vdd();
+	case STATE_DISPLAY_END:
+		od->picture = OLED_PICTURE_NONE;
+		od->event_report(OLED_EVENT_TIME_TO_END, od->picture);
 
-		od->state = STATE_POWER_OFF;
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
+		break;
+
+	case STATE_EXIT_VCC:
+		oled_drv_display_off();
+		oled_drv_charge_pump_disable();
+		oled_drv_power_off_vcc();
+
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_EXIT_VCC_TIME);
+		break;
+
+	case STATE_EXIT_VDD:
+		oled_drv_power_off_vdd();
+		oled_drv_exit();
+
+		ther_wake_unlock();
+
+		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
+		break;
+
+	default:
 		break;
 	}
+
 }
 
 void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char event, unsigned short param))
@@ -461,8 +545,11 @@ void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char
 
 	print(LOG_INFO, MODULE "oled9639 display init\n");
 
+	osal_memset(od, 0, sizeof(struct oled_display));
+
 	od->task_id = task_id;
 	od->event_report = event_report;
+	od->cur_state = STATE_POWER_OFF;
 
 	oled_drv_init();
 }

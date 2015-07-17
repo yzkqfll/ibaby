@@ -493,6 +493,15 @@ void oled_drv_init_device(void)
 {
 	struct ther_oled9639_drv *od = &oled9639_drv;
 
+	/* CPU bug:
+	 *  - we need to disable ane re-init iic, otherwise it will be dead in
+	 *    I2C_STRT(), etc
+	 */
+//	HalI2CDisable();
+
+	/* When POWER_SAVING enabled, we need to init iic every wake up */
+	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
+
 	set_display_onoff(DISPLAY_OFF);
 
 	set_charge_pump(CHARGE_PUMP_ENABLE);
@@ -529,10 +538,10 @@ void oled_drv_init_device(void)
 
 void oled_drv_init(void)
 {
-	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
 }
 
 void oled_drv_exit(void)
 {
+	HalI2CDisable();
 }
 
