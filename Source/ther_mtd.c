@@ -123,9 +123,7 @@ void ther_mtd_init(void)
 
 	ther_spi_w25x_init(m);
 
-	delay(UART_WAIT);
-	print(LOG_INFO, MODULE "chip size %lx, write size %lx, read size %lx, erase size %lx\n",
+	print(LOG_INFO, MODULE "chip size %lx, write_sz %lx, read_sz %lx, erase_sz %lx\n",
 			m->size, m->write_size, m->read_size, m->erase_size);
-	delay(UART_WAIT);
 }
 

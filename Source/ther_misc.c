@@ -54,10 +54,12 @@ void feed_watchdog(void)
 
 void delay(uint32 cnt)
 {
+#if (defined HAL_UART) && (HAL_UART == TRUE)
 	volatile unsigned char a;
 
 	for(uint32 i = 0; i < cnt; i++) {
 		a = 1;
 		asm("NOP");
 	}
+#endif
 }
