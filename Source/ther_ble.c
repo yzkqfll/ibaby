@@ -392,10 +392,10 @@ static void ble_init_devinfo(void)
 	char fw_version[FW_STRING_LEN];
 
 #if defined(POWER_SAVING)
-	sprintf(fw_version, "V%d.%d(ps) %s",
+	sprintf(fw_version, "V%d.%d %s",
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION, __DATE__);
 #else
-	sprintf(fw_version, "V%d.%d %s",
+	sprintf(fw_version, "V%d.%d(f) %s",
 			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION, __DATE__);
 #endif
 	DevInfo_SetParameter(DEVINFO_FIRMWARE_REV, sizeof(fw_version), fw_version);
