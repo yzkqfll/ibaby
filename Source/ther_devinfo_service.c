@@ -595,7 +595,7 @@ static uint8 devInfo_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       {
         // determine read length (exclude null terminating character)
 //        *pLen = MIN(maxLen, ((sizeof(devInfoFirmwareRev) - 1) - offset));
-        *pLen = strlen(devInfoFirmwareRev);
+        *pLen = strlen((const char *)devInfoFirmwareRev);
         // copy data
         osal_memcpy(pValue, &devInfoFirmwareRev[offset], *pLen);
       }
