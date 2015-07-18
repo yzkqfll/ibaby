@@ -53,6 +53,7 @@
 #include "ther_batt_service.h"
 #include "ther_uart.h"
 #include "ther_adc.h"
+#include "ther_misc.h"
 
 /*********************************************************************
  * MACROS
@@ -575,7 +576,7 @@ unsigned char ther_batt_get_raw_percentage(void)
  */
 static uint8 battMeasure( void )
 {
-  uint16 adc;
+  uint16 adc, adc1, adc2, adc3;
   uint8 percent;
 
   /**
@@ -617,7 +618,32 @@ static uint8 battMeasure( void )
   }
 
   // Configure ADC and perform a read
-  adc = ther_batt_get_adc();
+  adc1 = ther_batt_get_adc();
+  delay(100);
+  adc2 = ther_batt_get_adc();
+  delay(100);
+  adc3 = ther_batt_get_adc();
+  if (adc1 > adc2) {
+	  if (adc2 > adc3) {
+		  adc = adc2;
+	  } else {
+		  if (adc1 > adc3) {
+			  adc = adc3;
+		  } else {
+			  adc = adc1;
+		  }
+	  }
+  } else {
+	  if (adc1 > adc3) {
+		  adc = adc1;
+	  } else {
+		  if (adc2 > adc3) {
+			  adc = adc3;
+		  } else {
+			  adc = adc2;
+		  }
+	  }
+  }
 
   // Call measurement teardown callback
   if (battServiceTeardownCB != NULL)

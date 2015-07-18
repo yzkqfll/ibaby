@@ -32,7 +32,6 @@
 #include "peripheral.h"
 #include "gapbondmgr.h"
 #include "ther_service.h"
-#include "devinfoservice.h"
 #include "thermometer.h"
 #include "OSAL_Clock.h"
 
@@ -103,6 +102,7 @@ struct ther_info ther_info;
  * Batt
  */
 #define BATT_MEASURE_INTERVAL 120000
+#define BATT_MEASURE_CONFILCT_DELAY 5000
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -410,7 +410,7 @@ static void ther_device_init(struct ther_info *ti)
 			__DATE__, __TIME__);
 	print(LOG_INFO, "  by <%s>\n", get_reset_reason());
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "  Copyright (c) 2015 59089403@qq.com\r\n");
 	print(LOG_INFO, "  All rights reserved.\r\n");
@@ -591,11 +591,16 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	/* batt measure */
 	if (events & TH_BATT_EVT) {
 		if (ti->mode == NORMAL_MODE) {
-			Batt_MeasLevel();
-			ti->batt_percentage = ther_batt_get_percentage(FALSE);
-			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
+			if (ti->display_picture != OLED_PICTURE_NONE) {
+				osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_CONFILCT_DELAY);
 
-			osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
+			} else {
+				Batt_MeasLevel();
+				ti->batt_percentage = ther_batt_get_percentage(FALSE);
+				print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
+
+				osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
+			}
 		}
 
 		return (events ^ TH_BATT_EVT);
@@ -761,11 +766,10 @@ void Thermometer_Init(uint8 task_id)
 	osal_memset(ti, 0, sizeof(struct ther_info));
 
 	ti->task_id = task_id;
-
 	ti->power_mode = PM_ACTIVE;
 
-	start_watchdog_timer();
-	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);
+/*	start_watchdog_timer();
+	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);*/
 
 	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 }
