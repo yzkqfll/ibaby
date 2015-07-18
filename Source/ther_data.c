@@ -31,7 +31,6 @@
 #include "peripheral.h"
 #include "gapbondmgr.h"
 #include "ther_service.h"
-#include "devinfoservice.h"
 #include "thermometer.h"
 
 #include "ther_uart.h"

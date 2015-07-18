@@ -31,16 +31,17 @@
 #include "peripheral.h"
 #include "gapbondmgr.h"
 #include "ther_service.h"
-#include "devinfoservice.h"
 #include "thermometer.h"
 #include "OSAL_Clock.h"
 
 #include "ther_batt_service.h"
 #include "ther_private_service.h"
+#include "ther_devinfo_service.h"
 
 #include "ther_uart.h"
-
 #include "ther_ble.h"
+#include <stdio.h>
+#include "config.h"
 
 #define MODULE "[BLE    ] "
 
@@ -386,6 +387,22 @@ static void ble_init_batt_service(void)
 	Batt_AddService();
 }
 
+static void ble_init_devinfo(void)
+{
+	char fw_version[FW_STRING_LEN];
+
+#if defined(POWER_SAVING)
+	sprintf(fw_version, "V%d.%d(ps) %s",
+			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION, __DATE__);
+#else
+	sprintf(fw_version, "V%d.%d %s",
+			FIRMWARE_MAJOR_VERSION, FIREWARM_MINOR_VERSION, __DATE__);
+#endif
+	DevInfo_SetParameter(DEVINFO_FIRMWARE_REV, sizeof(fw_version), fw_version);
+
+	DevInfo_AddService();
+}
+
 void ble_private_service(uint8 event, uint8 *data, uint8 *len)
 {
 	struct ble_info *bi = &ble_info;
@@ -435,8 +452,7 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 	GGS_AddService( GATT_ALL_SERVICES );         // GAP
 	GATTServApp_AddService( GATT_ALL_SERVICES ); // GATT attributes
 
-	DevInfo_AddService( );
-
+	ble_init_devinfo();
 	ble_init_thermometer_service();
 	ble_init_batt_service();
 	ble_init_private_service();
