@@ -177,22 +177,6 @@ void uDelay(unsigned char l)
 	while(l--);
 }
 
-void Delay(unsigned char n)
-{
-unsigned char i,j,k;
-
-	for(k=0;k<n;k++)
-	{
-		for(i=0;i<131;i++)
-		{
-			for(j=0;j<15;j++)
-			{
-				uDelay(203);
-			}
-		}
-	}
-}
-
 /*
  * 1. Fundamental Command
  */

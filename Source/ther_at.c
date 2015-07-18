@@ -278,6 +278,11 @@ static unsigned char at_sinfo(char *ret_buf)
 
 static unsigned char at_sreset(char *ret_buf)
 {
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
 	storage_reset();
 
 	return 0;
@@ -314,6 +319,8 @@ static unsigned char at_test(char *ret_buf)
 //	ther_read_zero_cal_info(&delta);
 //	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
 
+	while (1);
+
 	ret = ther_storage_test();
 
 	if (ret)
@@ -333,7 +340,7 @@ static void at_help(void)
 	print(LOG_INFO, "    AT+LDO=\n");
 	print(LOG_INFO, "    AT+LDO\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+ADC0\n");
 	print(LOG_INFO, "    AT+ADC1\n");
@@ -341,22 +348,22 @@ static void at_help(void)
 	print(LOG_INFO, "    AT+HWADC1\n");
 	print(LOG_INFO, "    AT+HWADC6\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+CH0RT\n");
 	print(LOG_INFO, "    AT+CH1RT\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+CH0TEMP\n");
 	print(LOG_INFO, "    AT+CH1TEMP\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+ADC0DELTA=\n");
 	print(LOG_INFO, "    AT+ADC0DELTA\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+BDELTA=\n");
 	print(LOG_INFO, "    AT+BDELTA\n");
@@ -364,17 +371,17 @@ static void at_help(void)
 	print(LOG_INFO, "    AT+R25_DELTA\n");
 	print(LOG_INFO, "    AT+BDELTA=\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+BATTADC\n");
 	print(LOG_INFO, "    AT+BATTV\n");
 	print(LOG_INFO, "    AT+BATTP\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "    AT+CONTRAST=\n");
 
-	delay(UART_WAIT);
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "--------------------------\n");
 	print(LOG_INFO, "\n");
 }
