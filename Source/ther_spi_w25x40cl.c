@@ -179,7 +179,7 @@ static int8 w25x_flash_open(void)
 {
 	uint8 send_buffer[2];
 
-	power_on_boost();
+//	power_on_boost();
 
 	w25x_write_enable();
 
@@ -194,7 +194,7 @@ static int8 w25x_flash_open(void)
 
 static int8 w25x_flash_close(void)
 {
-	power_off_boost();
+//	power_off_boost();
 
 	return MTD_OK;
 }

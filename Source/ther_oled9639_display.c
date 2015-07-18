@@ -488,7 +488,7 @@ void oled_display_state_machine(void)
 
 	case STATE_INIT_VDD_VCC:
 		oled_drv_power_on_vdd();
-		oled_drv_power_on_vcc();
+//		oled_drv_power_on_vcc();
 
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_INIT_VCC_VDD_TIME);
 		break;
@@ -519,7 +519,7 @@ void oled_display_state_machine(void)
 	case STATE_EXIT_VCC:
 		oled_drv_display_off();
 		oled_drv_charge_pump_disable();
-		oled_drv_power_off_vcc();
+//		oled_drv_power_off_vcc();
 
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_EXIT_VCC_TIME);
 		break;
