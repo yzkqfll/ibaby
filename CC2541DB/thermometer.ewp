@@ -477,7 +477,6 @@
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\hci</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\host</state>
           <state>$PROJ_DIR$\..\..\Profiles\Roles</state>
-          <state>$PROJ_DIR$\..\..\Profiles\DevInfo</state>
           <state>$PROJ_DIR$\..\..\Profiles\HidDev</state>
           <state>$PROJ_DIR$\..\Source</state>
         </option>
@@ -944,7 +943,7 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>neobay_v1_0.hex</state>
+          <state>neobay_v1_1_pre.hex</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>
@@ -1116,7 +1115,13 @@
       <name>$PROJ_DIR$\..\Source\ther_buzzer.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_crc.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_data.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_devinfo_service.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_misc.c</name>
@@ -1367,12 +1372,6 @@
   </group>
   <group>
     <name>PROFILES</name>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\DevInfo\devinfoservice.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\DevInfo\devinfoservice.h</name>
-    </file>
     <file>
       <name>$PROJ_DIR$\..\..\Profiles\Roles\gap.c</name>
     </file>
