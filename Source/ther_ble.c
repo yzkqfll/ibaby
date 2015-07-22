@@ -435,7 +435,7 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 	bi->update_request_enable = TRUE;
 	bi->min_connection_interval = BLE_MIN_CONN_INTERVAL;
 	bi->max_connection_interval = BLE_MAX_CONN_INTERVAL;
-	bi->slave_latency = 5;
+	bi->slave_latency = 1;
 	bi->connection_timeout = 1000;
 
 	ble_setup_gap(bi);

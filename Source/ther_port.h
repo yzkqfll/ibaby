@@ -11,7 +11,7 @@
 #define P0_UART_TX_BIT 3
 #define P0_HW1_BIT 4
 #define P0_HW2_BIT 5
-#define P0_TP_BIT 6
+#define P0_LDO_EN_BIT 6
 #define P0_ADCREF_BIT 7
 
 #define P1_BUZZER_BIT 0
@@ -38,7 +38,7 @@
 #define P0_UART_TX_PIN P0_3
 #define P0_HW1_PIN P0_4
 #define P0_HW2_PIN P0_5
-#define P0_TP_PIN P0_6
+#define P0_LDO_EN_PIN P0_6
 #define P0_ADCREF_PIN P0_7
 
 #define P1_BUZZER_PIN P1_0

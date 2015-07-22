@@ -51,7 +51,7 @@ void ther_port_init(void)
 	 *     P0.3  UART TX: peripheral mode, alt 1
 	 *     P0.4  HW VERSION: gpio, output
 	 *     P0.5  HW VERSION: gpio, output
-	 *     P0.6  TP: gpio, output
+	 *     P0.6  LDO-EN(for ADC Vref, 2V): gpio, output
 	 *     P0.7  ADC Vref: peripheral mode
 	 *
 	 * P1
@@ -87,8 +87,8 @@ void ther_port_init(void)
 	 */
 
 	P0SEL = BV(P0_UART_RX_BIT) | BV(P0_UART_TX_BIT);
-	P0DIR = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_TP_BIT);
-	P0INP = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_TP_BIT);
+	P0DIR = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_LDO_EN_BIT);
+	P0INP = BV(P0_HW1_BIT) | BV(P0_HW2_BIT) | BV(P0_LDO_EN_BIT);
 	APCFG = BV(P0_AIN0_BIT) | BV(P0_AIN1_BIT) | BV(P0_ADCREF_BIT);
 
 	P1SEL = BV(P1_BUZZER_BIT) | BV(P1_SPI_SCK_BIT) | BV(P1_SPI_MOSI_BIT) | BV(P1_SPI_MISO_BIT);
@@ -103,7 +103,7 @@ void ther_port_init(void)
 	PERCFG = BV(1); /* USART1 SPI alt.2(U1CFG) */
 
 	P2SEL = 0;
-	P2DIR = BV(P2_OLED_VDDEN_BIT) | BV(P2_LDO_EN_BIT) | BV(P2_SPI_WP_BIT);
+	P2DIR = BV(P2_OLED_VDDEN_BIT) | BV(P2_SPI_WP_BIT);
 	P2INP = BV(P2_OLED_VDDEN_BIT) | BV(5); /* P0 pulldown, P1,P2 pullup */
 
 	P0 = 0;

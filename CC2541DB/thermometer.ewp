@@ -287,7 +287,7 @@
           <state>HAL_LED=FALSE</state>
           <state>HAL_KEY=FALSE</state>
           <state>HAL_ADC=FALSE</state>
-          <state>XOSC32K_INSTALLED=FALSE</state>
+          <state>xXOSC32K_INSTALLED=FALSE</state>
           <state>POWER_SAVING</state>
           <state>xHAL_UART=TRUE</state>
           <state>xHAL_SLEEP_DEBUG_POWER_MODE</state>
@@ -943,7 +943,7 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>neobay_v1_1.hex</state>
+          <state>neobay_v1_2_dbg.hex</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>

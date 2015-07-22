@@ -25,24 +25,9 @@
 #include "ther_temp.h"
 #include "ther_storage.h"
 #include "ther_ble.h"
+#include "ther_port.h"
 
 #define MODULE "[TEMP   ] "
-
-/* p2.3: ldo enable */
-#define LDO_ENABLE_PIN P2_3
-#define LDO_ENABLE_BIT 3
-
-/* p0.7: Vref */
-#define ADC_REF_VOLTAGE_PIN P0_7
-#define ADC_REF_VOLTAGE_BIT 7
-
-/* p0.0: high presision temp */
-#define ADC_HIGH_PRECISION_PIN P0_0
-#define ADC_HIGH_RRECISION_BIT 0
-
-/* p0.1: low presision temp */
-#define ADC_LOW_PRECISION_PIN P0_1
-#define ADC_LOW_PRECISION_BIT 1
 
 #define TEMP_MARGIN 20 /* 2 celsius */
 #define CH0_TEMP_MIN 290
@@ -65,12 +50,12 @@ static struct ther_temp ther_temp;
 
 static void enable_ldo(void)
 {
-	LDO_ENABLE_PIN = 1;
+	P0_LDO_EN_PIN = 1;
 }
 
 static void disable_ldo(void)
 {
-	LDO_ENABLE_PIN = 0;
+	P0_LDO_EN_PIN = 0;
 }
 
 static float calculate_Rt_by_adc0(unsigned short adc)
