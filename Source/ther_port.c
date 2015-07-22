@@ -69,8 +69,8 @@ void ther_port_init(void)
 	 *     P2.1  DBG-DATA
 	 *     P2.2  DBG-CLK
 	 *
-	 *     P2.3  LDO-EN(for ADC Vref, 2V): gpio, output	-> disable 32K XOSC first
-	 *     P2.4  SPI-WP: gpio output					-> disable 32K XOSC first
+	 *     P2.3  32K XOSC
+	 *     P2.4  32K XOSC
 	 *           P2.3 and P2.4 is mulplex with XOSC32K, so if we want to use it as gpio,
 	 *           we need set OSC32K_INSTALLED=FALSE in IAR options.
 	 *           see datasheet <7.8 32-kHz XOSC Input>
