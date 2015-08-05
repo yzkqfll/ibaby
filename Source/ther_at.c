@@ -38,40 +38,52 @@
 
 #define AT_DELAY 10
 
+/* system */
 #define AT_CMD "AT"
 #define AT_MODE "AT+MODE="
 #define AT_MODE_Q "AT+MODE"
+#define AT_RESET "AT+RESET"
+
+/* zero cal */
 #define AT_LDO "AT+LDO="
 #define AT_LDO_Q "AT+LDO"
 #define AT_ADC0 "AT+ADC0"
 #define AT_ADC1 "AT+ADC1"
 #define AT_HWADC0 "AT+HWADC0"
 #define AT_HWADC1 "AT+HWADC1"
-#define AT_HWADC6 "AT+HWADC6"
+#define AT_ADC0_DELTA "AT+ADC0DELTA="
+#define AT_ADC0_DELTA_Q "AT+ADC0DELTA"
+
 #define AT_CH0RT "AT+CH0RT"
 #define AT_CH1RT "AT+CH1RT"
 #define AT_TEMP0 "AT+CH0TEMP"
 #define AT_TEMP1 "AT+CH1TEMP"
 
-#define AT_ADC0_DELTA "AT+ADC0DELTA="
-#define AT_ADC0_DELTA_Q "AT+ADC0DELTA"
+/* temp cal */
+#define AT_LOW_TEMP_CAL "AT+LOWTEMPCAL="
+#define AT_LOW_TEMP_CAL_Q "AT+LOWTEMPCAL"
+#define AT_HIGH_TEMP_CAL "AT+HIGHTEMPCAL="
+#define AT_HIGH_TEMP_CAL_Q "AT+HIGHTEMPCAL"
 
-#define AT_B_DELTA "AT+BDELTA="
-#define AT_B_DELTA_Q "AT+BDELTA"
-#define AT_R25_DELTA "AT+R25_DELTA="
-#define AT_R25_DELTA_Q "AT+R25_DELTA"
+#define AT_TEMP_CAL "AT+TEMPCAL="
+#define AT_TEMP_CAL_Q "AT+TEMPCAL"
 
+/* batt */
 #define AT_BATT_ADC "AT+BATTADC"
 #define AT_BATT_VOLTAGE "AT+BATTV"
 #define AT_BATT_PERCENTAGE "AT+BATTP"
 
+/* oled */
 #define AT_OLED_CONTRAST "AT+CONTRAST="
 
+/* spi/storage */
 #define AT_S_ERASE "AT+SERASE"
 #define AT_S_INFO "AT+SINFO"
 #define AT_S_RESET "AT+SRESET"
 #define AT_S_RESTORE "AT+SRESTORE"
+#define AT_S_TEST "AT+STEST"
 
+/* misc */
 #define AT_ALIVE "AT+ALIVE"
 #define AT_TEST "AT+TEST"
 
@@ -93,7 +105,7 @@ static void enter_cal_mode(struct ther_info *ti)
 }
 
 
-static unsigned char at_enter_cal_mode(char *ret_buf)
+static uint8 at_enter_cal_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
@@ -103,7 +115,7 @@ static unsigned char at_enter_cal_mode(char *ret_buf)
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_exit_cal_mode(char *ret_buf)
+static uint8 at_exit_cal_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
@@ -124,10 +136,10 @@ static unsigned char at_exit_cal_mode(char *ret_buf)
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_get_mode(char *ret_buf)
+static uint8 at_get_mode(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
-	unsigned char cnt;
+	uint8 cnt;
 
 	if (ti->mode == NORMAL_MODE) {
 		cnt = sprintf((char *)ret_buf, "%s\n", "+MODE:NORMAL");
@@ -140,123 +152,172 @@ static unsigned char at_get_mode(char *ret_buf)
 	return cnt;
 }
 
-static unsigned char at_set_ldo_on(char *ret_buf)
+static uint8 at_reset(char *ret_buf)
+{
+	system_reset();
+
+	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static uint8 at_set_ldo_on(char *ret_buf)
 {
 	ther_temp_power_on();
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_set_ldo_off(char *ret_buf)
+static uint8 at_set_ldo_off(char *ret_buf)
 {
 	ther_temp_power_off();
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_get_adc(char *ret_buf, unsigned char channel)
+static uint8 at_get_adc(char *ret_buf, uint8 channel)
 {
 	unsigned short adc = ther_get_adc(channel);
 
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
-static unsigned char at_get_hw_adc(char *ret_buf, unsigned char channel)
+static uint8 at_get_hw_adc(char *ret_buf, uint8 channel)
 {
 	unsigned short adc = ther_get_hw_adc(channel);
 
 	return sprintf((char *)ret_buf, "+HWADC%d:%d\n", channel, adc);
 }
 
-static unsigned char at_get_ch_Rt(char *ret_buf, unsigned char ch)
+static uint8 at_get_ch_Rt(char *ret_buf, uint8 ch)
 {
 	float Rt;
 
 	Rt = ther_get_Rt(ch);
 
-	return sprintf((char *)ret_buf, "+CH%dRT:%f\n", ch, Rt);
+	return sprintf((char *)ret_buf, "+CH%dRT:%.4f\n", ch, Rt);
 }
 
-static unsigned char at_get_ch_temp(char *ret_buf, unsigned char ch)
+static uint8 at_get_ch_temp(char *ret_buf, uint8 ch)
 {
-	unsigned short temp;
+	float temp;
 
 	temp = ther_get_ch_temp(ch);
 
-	return sprintf((char *)ret_buf, "+CH%dTEMP:%d\n", ch, temp);
+	return sprintf((char *)ret_buf, "+CH%dTEMP:%.4f\n", ch, temp);
 }
 
-static unsigned char at_set_adc0_delta(char *ret_buf, short delta)
+static uint8 at_set_adc0_delta(char *ret_buf, short delta)
 {
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
 	ther_set_adc0_delta(delta);
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_get_adc0_delta(char *ret_buf)
+static uint8 at_get_adc0_delta(char *ret_buf)
 {
-	unsigned short delta = ther_get_adc0_delta();
+	short delta = ther_get_adc0_delta();
 
 	return sprintf((char *)ret_buf, "+CH0 ADC DELTA:%d\n", delta);
 }
 
-static unsigned char at_set_B_delta(char *ret_buf, float delta)
+static uint8 at_set_low_temp_cal(char *ret_buf, float R_low, float t_low)
 {
-	ther_set_B_delta(delta);
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
+	if (storage_write_low_temp_cal(R_low, t_low))
+		return sprintf((char *)ret_buf, "%s\n", "OK");
+	else
+		return sprintf((char *)ret_buf, "%s\n", "ERROR");
+}
+
+static uint8 at_get_low_temp_cal(char *ret_buf)
+{
+	float R_low, t_low;
+
+	storage_read_low_temp_cal(&R_low, &t_low);
+
+	return sprintf((char *)ret_buf, "+LOWTEMPCAL:%.4f,%.4f\n", R_low, t_low);
+}
+
+static uint8 at_set_high_temp_cal(char *ret_buf, float R_high, float t_high)
+{
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
+	if (storage_write_high_temp_cal(R_high, t_high))
+		return sprintf((char *)ret_buf, "%s\n", "OK");
+	else
+		return sprintf((char *)ret_buf, "%s\n", "ERROR");
+}
+
+static uint8 at_get_high_temp_cal(char *ret_buf)
+{
+	float R_high, t_high;
+
+	storage_read_high_temp_cal(&R_high, &t_high);
+
+	return sprintf((char *)ret_buf, "+HIGHTEMPCAL:%.4f,%.4f\n", R_high, t_high);
+}
+
+static uint8 at_set_temp_cal(char *ret_buf, float B_delta, float R25_delta)
+{
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
+	ther_set_temp_delta(B_delta, R25_delta);
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned char at_get_B_delta(char *ret_buf)
+static uint8 at_get_temp_cal(char *ret_buf)
 {
-	float delta = ther_get_B_delta();
+	float B_delta, R25_delta;
 
-	return sprintf((char *)ret_buf, "+BDELTA:%f\n", delta);
+	ther_get_temp_cal(&B_delta, &R25_delta);
+
+	return sprintf((char *)ret_buf, "+TEMPCAL:%.4f,%.4f\n", B_delta, R25_delta);
 }
 
-static unsigned char at_set_R25_delta(char *ret_buf, float delta)
-{
-	ther_set_R25_delta(delta);
-
-	return sprintf((char *)ret_buf, "%s\n", "OK");
-}
-
-static unsigned char at_get_R25_delta(char *ret_buf)
-{
-	float delta = ther_get_R25_delta();
-
-	return sprintf((char *)ret_buf, "+R25DELTA:%f\n", delta);
-}
-
-static unsigned char at_get_batt_adc(char *ret_buf)
+static uint8 at_get_batt_adc(char *ret_buf)
 {
 	unsigned short adc = ther_batt_get_adc();
 
 	return sprintf((char *)ret_buf, "+BATTADC:%d\n", adc);
 }
 
-static unsigned char at_get_batt_voltage(char *ret_buf)
+static uint8 at_get_batt_voltage(char *ret_buf)
 {
 	float voltage = ther_batt_get_voltage();
 
 	return sprintf((char *)ret_buf, "+BATTVOLTAGE:%.2f V\n", voltage);
 }
 
-static unsigned char at_get_batt_percentage(char *ret_buf)
+static uint8 at_get_batt_percentage(char *ret_buf)
 {
-	unsigned char percentage = ther_batt_get_percentage(TRUE);
+	uint8 percentage = ther_batt_get_percentage(TRUE);
 
 	return sprintf((char *)ret_buf, "+BATT:%d%%\n", percentage);
 }
 
-static unsigned char at_set_oled9639_contrast(char *ret_buf, unsigned char contrast)
+static uint8 at_set_oled9639_contrast(char *ret_buf, uint8 contrast)
 {
 	oled_drv_set_contrast(contrast);
 
 	return sprintf((char *)ret_buf, "OK\n");
 }
 
-static unsigned char at_serase(char *ret_buf)
+static uint8 at_serase(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
@@ -269,14 +330,19 @@ static unsigned char at_serase(char *ret_buf)
 		return sprintf((char *)ret_buf, "ERROR\n");
 }
 
-static unsigned char at_sinfo(char *ret_buf)
+static uint8 at_sinfo(char *ret_buf)
 {
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
 	storage_show_info();
 
 	return 0;
 }
 
-static unsigned char at_sreset(char *ret_buf)
+static uint8 at_sreset(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 
@@ -288,12 +354,16 @@ static unsigned char at_sreset(char *ret_buf)
 	return 0;
 }
 
-static unsigned char at_srestore(char *ret_buf)
+static uint8 at_srestore(char *ret_buf)
 {
 	uint8 *data;
 	uint16 len;
 	uint16 offset = 0;
 	struct temp_data *td;
+	struct ther_info *ti = get_ti();
+
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
 
 	storage_restore_temp(&data, &len);
 
@@ -310,8 +380,19 @@ static unsigned char at_srestore(char *ret_buf)
 	return 0;
 }
 
+static uint8 at_stest(char *ret_buf)
+{
+	struct ther_info *ti = get_ti();
 
-static unsigned char at_test(char *ret_buf)
+	if (ti->mode != CAL_MODE)
+		enter_cal_mode(ti);
+
+	storage_test();
+
+	return 0;
+}
+
+static uint8 at_test(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
 	bool ret;
@@ -321,7 +402,7 @@ static unsigned char at_test(char *ret_buf)
 
 	while (1);
 
-	ret = ther_storage_test();
+	ret = storage_test();
 
 	if (ret)
 		return sprintf((char *)ret_buf, "OK\n");
@@ -337,16 +418,21 @@ static void at_help(void)
 	print(LOG_INFO, "    AT\n");
 	print(LOG_INFO, "    AT+MODE=\n");
 	print(LOG_INFO, "    AT+MODE\n");
-	print(LOG_INFO, "    AT+LDO=\n");
-	print(LOG_INFO, "    AT+LDO\n");
+	print(LOG_INFO, "    AT+RESET\n");
 
 	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+LDO=\n");
+	print(LOG_INFO, "    AT+LDO\n");
 	print(LOG_INFO, "    AT+ADC0\n");
 	print(LOG_INFO, "    AT+ADC1\n");
 	print(LOG_INFO, "    AT+HWADC0\n");
 	print(LOG_INFO, "    AT+HWADC1\n");
-	print(LOG_INFO, "    AT+HWADC6\n");
+
+	uart_delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+ADC0DELTA=\n");
+	print(LOG_INFO, "    AT+ADC0DELTA\n");
 
 	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
@@ -360,16 +446,13 @@ static void at_help(void)
 
 	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
-	print(LOG_INFO, "    AT+ADC0DELTA=\n");
-	print(LOG_INFO, "    AT+ADC0DELTA\n");
-
+	print(LOG_INFO, "    AT+LOWTEMPCAL=\n");
+	print(LOG_INFO, "    AT+LOWTEMPCAL\n");
+	print(LOG_INFO, "    AT+HIGHTEMPCAL=\n");
+	print(LOG_INFO, "    AT+HIGHTEMPCAL\n");
 	uart_delay(UART_WAIT);
-	print(LOG_INFO, "\n");
-	print(LOG_INFO, "    AT+BDELTA=\n");
-	print(LOG_INFO, "    AT+BDELTA\n");
-	print(LOG_INFO, "    AT+R25_DELTA=\n");
-	print(LOG_INFO, "    AT+R25_DELTA\n");
-	print(LOG_INFO, "    AT+BDELTA=\n");
+	print(LOG_INFO, "    AT+TEMPCAL=\n");
+	print(LOG_INFO, "    AT+TEMPCAL\n");
 
 	uart_delay(UART_WAIT);
 	print(LOG_INFO, "\n");
@@ -382,11 +465,19 @@ static void at_help(void)
 	print(LOG_INFO, "    AT+CONTRAST=\n");
 
 	uart_delay(UART_WAIT);
+	print(LOG_INFO, "\n");
+	print(LOG_INFO, "    AT+SERASE\n");
+	print(LOG_INFO, "    AT+SINFO\n");
+	print(LOG_INFO, "    AT+SRESET\n");
+	print(LOG_INFO, "    AT+SRESTORE\n");
+	print(LOG_INFO, "    AT+STEST\n");
+
+	uart_delay(UART_WAIT);
 	print(LOG_INFO, "--------------------------\n");
 	print(LOG_INFO, "\n");
 }
 
-void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned char *ret_len)
+void ther_at_handle(char *cmd_buf, uint8 len, char *ret_buf, uint8 *ret_len)
 {
 	char *p;
 
@@ -433,6 +524,10 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	} else if (strcmp((char *)cmd_buf, AT_MODE_Q) == 0) {
 		*ret_len = at_get_mode(ret_buf);
 
+	/* AT+RESET */
+	} else if (strcmp((char *)cmd_buf, AT_RESET) == 0) {
+		*ret_len = at_reset(ret_buf);
+
 	/* AT+LDO=x */
 	} else if (strncmp((char *)cmd_buf, AT_LDO, strlen(AT_LDO)) == 0) {
 		p = cmd_buf + strlen(AT_LDO);
@@ -459,10 +554,6 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	/* AT+HWADC1 */
 	} else if (strcmp((char *)cmd_buf, AT_HWADC1) == 0) {
 		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_1);
-
-	/* AT+HWADC6 */
-	} else if (strcmp((char *)cmd_buf, AT_HWADC6) == 0) {
-		*ret_len = at_get_hw_adc(ret_buf, HAL_ADC_CHANNEL_6);
 
 	/* AT+CH0RT */
 	} else if (strcmp((char *)cmd_buf, AT_CH0RT) == 0) {
@@ -493,31 +584,62 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	} else if (strcmp((char *)cmd_buf, AT_ADC0_DELTA_Q) == 0) {
 		*ret_len = at_get_adc0_delta(ret_buf);
 
-	/* AT+BDELTA=x */
-	} else if (strncmp((char *)cmd_buf, AT_B_DELTA, strlen(AT_B_DELTA)) == 0) {
-		float delta;
+	/* AT+LOWTEMPCAL=x,x */
+	} else if (strncmp((char *)cmd_buf, AT_LOW_TEMP_CAL, strlen(AT_LOW_TEMP_CAL)) == 0) {
+		float R_low, t_low;
 
-		p = cmd_buf + strlen(AT_B_DELTA);
-		delta =  atof(p);
+		p = cmd_buf + strlen(AT_LOW_TEMP_CAL);
+		R_low =  atof(p);
 
-		*ret_len = at_set_B_delta(ret_buf, delta);
+		p = strstr((const char *)cmd_buf, ",");
+		if (p)
+			t_low = atof(p + 1);
+		else
+			t_low = 0;
 
-	/* AT+BDELTA */
-	} else if (strcmp((char *)cmd_buf, AT_B_DELTA_Q) == 0) {
-		*ret_len = at_get_B_delta(ret_buf);
+		*ret_len = at_set_low_temp_cal(ret_buf, R_low, t_low);
 
-	/* AT+R25_DELTA=x */
-	} else if (strncmp((char *)cmd_buf, AT_R25_DELTA, strlen(AT_R25_DELTA)) == 0) {
-		float delta;
+	/* AT+LOWTEMPCAL */
+	} else if (strcmp((char *)cmd_buf, AT_LOW_TEMP_CAL_Q) == 0) {
+		*ret_len = at_get_low_temp_cal(ret_buf);
 
-		p = cmd_buf + strlen(AT_R25_DELTA);
-		delta =  atof(p);
+	/* AT+HIGHTEMPCAL=x,x */
+	} else if (strncmp((char *)cmd_buf, AT_HIGH_TEMP_CAL, strlen(AT_HIGH_TEMP_CAL)) == 0) {
+		float R_high, t_high;
 
-		*ret_len = at_set_R25_delta(ret_buf, delta);
+		p = cmd_buf + strlen(AT_HIGH_TEMP_CAL);
+		R_high =  atof(p);
 
-	/* AT+R25_DELTA= */
-	} else if (strcmp((char *)cmd_buf, AT_R25_DELTA_Q) == 0) {
-		*ret_len = at_get_R25_delta(ret_buf);
+		p = strstr((const char *)cmd_buf, ",");
+		if (p)
+			t_high = atof(p + 1);
+		else
+			t_high = 0;
+
+		*ret_len = at_set_high_temp_cal(ret_buf, R_high, t_high);
+
+	/* AT+HIGHTEMPCAL */
+	} else if (strcmp((char *)cmd_buf, AT_HIGH_TEMP_CAL_Q) == 0) {
+		*ret_len = at_get_high_temp_cal(ret_buf);
+
+	/* AT+TEMPCAL=x,x */
+	} else if (strncmp((char *)cmd_buf, AT_TEMP_CAL, strlen(AT_TEMP_CAL)) == 0) {
+		float B_delta, R25_delta;
+
+		p = cmd_buf + strlen(AT_TEMP_CAL);
+		B_delta =  atof(p);
+
+		p = strstr(cmd_buf, ",");
+		if (p)
+			R25_delta = atof(p + 1);
+		else
+			R25_delta = 0;
+
+		*ret_len = at_set_temp_cal(ret_buf, B_delta, R25_delta);
+
+	/* AT+TEMPCAL */
+	} else if (strcmp((char *)cmd_buf, AT_TEMP_CAL_Q) == 0) {
+		*ret_len = at_get_temp_cal(ret_buf);
 
 	/* AT+BATTADC */
 	} else if (strcmp((char *)cmd_buf, AT_BATT_ADC) == 0) {
@@ -533,7 +655,7 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 
 	/* AT+CONTRAST=x */
 	} else if (strncmp((char *)cmd_buf, AT_OLED_CONTRAST, strlen(AT_OLED_CONTRAST)) == 0) {
-		unsigned char contrast;
+		uint8 contrast;
 
 		p = cmd_buf + strlen(AT_OLED_CONTRAST);
 		contrast =  atoi(p);
@@ -555,6 +677,10 @@ void ther_at_handle(char *cmd_buf, unsigned char len, char *ret_buf, unsigned ch
 	/* AT+SRESTORE */
 	} else if (strcmp((char *)cmd_buf, AT_S_RESTORE) == 0) {
 		*ret_len = at_srestore(ret_buf);
+
+	/* AT+STEST */
+	} else if (strcmp((char *)cmd_buf, AT_S_TEST) == 0) {
+		*ret_len = at_stest(ret_buf);
 
 	} else {
 		at_help();

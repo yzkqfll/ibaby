@@ -29,9 +29,9 @@
 
 #define MODULE "[TEMP   ] "
 
-#define TEMP_MARGIN 20 /* 2 celsius */
-#define CH0_TEMP_MIN 290
-#define CH0_TEMP_MAX 450
+#define TEMP_MARGIN 2.0 /* 2 celsius */
+#define CH0_TEMP_MIN 29.0
+#define CH0_TEMP_MAX 45.0
 
 struct ther_temp {
 	unsigned char channel;
@@ -91,7 +91,7 @@ static float calculate_Rt_by_adc1(unsigned short adc)
 /*
  * 377 => 37.7 celsius
  */
-static unsigned short calculate_temp_by_Rt(float Rt, float B_delta, float R25_delta)
+static float calculate_temp_by_Rt(float Rt, float B_delta, float R25_delta)
 {
 	float temp;
 	float B = 3950 + B_delta;
@@ -101,16 +101,13 @@ static unsigned short calculate_temp_by_Rt(float Rt, float B_delta, float R25_de
 	 * From Sensor SPEC:
 	 *
 	 * 3950.0 = ln(R25/Rt) / (1 / (25 + 273.15) - 1 / (temp + 273.15))
-	 * 	R25 is the resistance in 25 du
+	 * 	R25 is the resistance in 25 celsius
 	 *
 	 * temp = 1 / (1 / (25 + 273.15) - ln(Rt25/Rt) / 3950)) - 273.15
 	 */
 	temp = 1.0 / (1.0 / (25.0 + 273.15) - log(R25 / Rt) / B) - 273.15;
-	temp += 0.05;
 
-	temp = temp * 10.0;
-
-	return (unsigned short)temp;
+	return temp;
 }
 
 void ther_temp_power_on(void)
@@ -164,34 +161,23 @@ short ther_get_adc0_delta(void)
 	return t->adc0_delta;
 }
 
-void ther_set_B_delta(float delta)
+void ther_set_temp_delta(float B_delta, float R25_delta)
 {
 	struct ther_temp *t = &ther_temp;
 
-	t->B_delta = delta;
+	t->B_delta = B_delta;
+	t->R25_delta = R25_delta;
+
+	storage_write_temp_cal(B_delta, R25_delta);
 }
 
-float ther_get_B_delta(void)
+void ther_get_temp_cal(float *B_delta, float *R25_delta)
 {
 	struct ther_temp *t = &ther_temp;
 
-	return t->B_delta;
+	*B_delta = t->B_delta;
+	*R25_delta = t->R25_delta;
 }
-
-void ther_set_R25_delta(float delta)
-{
-	struct ther_temp *t = &ther_temp;
-
-	t->R25_delta = delta;
-}
-
-float ther_get_R25_delta(void)
-{
-	struct ther_temp *t = &ther_temp;
-
-	return t->R25_delta;
-}
-
 
 float ther_get_Rt(unsigned char ch)
 {
@@ -210,11 +196,10 @@ float ther_get_Rt(unsigned char ch)
 	return Rt;
 }
 
-unsigned short ther_get_ch_temp(unsigned char ch)
+float ther_get_ch_temp(unsigned char ch)
 {
 	struct ther_temp *t = &ther_temp;
-	unsigned short temp;
-	float Rt;
+	float Rt, temp;
 
 	Rt = ther_get_Rt(ch);
 
@@ -224,11 +209,11 @@ unsigned short ther_get_ch_temp(unsigned char ch)
 	return temp;
 }
 
-static unsigned short ther_get_ch_temp_print(unsigned char ch)
+static float ther_get_ch_temp_print(unsigned char ch)
 {
 	struct ther_temp *t = &ther_temp;
-	unsigned short adc, temp;
-	float Rt;
+	unsigned short adc;
+	float Rt, temp;
 
 	adc = ther_get_adc(ch);
 
@@ -242,7 +227,7 @@ static unsigned short ther_get_ch_temp_print(unsigned char ch)
 	/* Rt -> temp */
 	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
-	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %d\n",
+	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
 			ch, adc, Rt, temp);
 
 	return temp;
@@ -251,10 +236,10 @@ static unsigned short ther_get_ch_temp_print(unsigned char ch)
 /*
  * return value: 377 => 37.7 Celsius
  */
-unsigned short ther_get_temp(void)
+float ther_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
-	unsigned short temp; /* 377 => 37.7 Celsius */
+	float temp; /* 377 => 37.7 Celsius */
 
 	t->channel = HAL_ADC_CHANNEL_0;
 	temp = ther_get_ch_temp_print(t->channel);
@@ -278,5 +263,8 @@ void ther_temp_init(void)
 	t->channel = HAL_ADC_CHANNEL_1;
 
 	storage_read_zero_cal(&t->adc0_delta);
-	print(LOG_INFO, MODULE "ADC0 delta %d\n", t->adc0_delta);
+	print(LOG_INFO, MODULE "ADC0 delta is %d\n", t->adc0_delta);
+
+	storage_read_temp_cal(&t->B_delta, &t->R25_delta);
+	print(LOG_INFO, MODULE "B_delta is %d, R25_delta is %d\n", t->B_delta, t->R25_delta);
 }

@@ -76,8 +76,15 @@ struct zero_cal {
 #define TEMP_CAL_MAGIC 0xF00D
 struct temp_cal {
 	unsigned short magic;
+
+	float R_low;
+	float t_low;
+	float R_high;
+	float t_high;
+
 	float R25_delta;
 	float B_delta;
+
 	uint8 crc;
 };
 
@@ -630,6 +637,7 @@ void ther_storage_init(void)
 	memset(ts, 0, sizeof(struct ther_storage));
 
 	if (!storage_is_formated()) {
+		uart_delay(UART_WAIT);
 		print(LOG_INFO, MODULE "storage is not formated, format it\n");
 		if (!storage_format())
 			print(LOG_INFO, MODULE "fail to format storage\n");
@@ -717,6 +725,7 @@ void storage_restore_temp(uint8 **buf, uint16 *len)
 	};
 
 }
+
 
 void storage_show_info(void)
 {
@@ -807,6 +816,207 @@ bool storage_read_zero_cal(short *delta)
 	return ret;
 }
 
+bool storage_write_low_temp_cal(float R_low, float t_low)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		goto out;
+	}
+
+	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
+		goto out;
+	}
+
+	tc.magic = ZERO_CAL_MAGIC;
+	tc.R_low = R_low;
+	tc.t_low = t_low;
+	tc.crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+
+	if (ther_mtd_write(m, addr, &tc, sizeof(tc), NULL))
+		goto out;
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
+bool storage_read_low_temp_cal(float *R_low, float *t_low)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		*R_low = 0;
+		*t_low = 0;
+		goto out;
+	} else {
+
+		crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+		if (crc == tc.crc) {
+			*R_low = tc.R_low;
+			*t_low = tc.t_low;
+
+			ret = TRUE;
+		} else {
+			*R_low = 0;
+			*t_low = 0;
+		}
+	}
+	ret = TRUE;
+
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
+bool storage_write_high_temp_cal(float R_high, float t_high)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		goto out;
+	}
+
+	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
+		goto out;
+	}
+
+	tc.magic = ZERO_CAL_MAGIC;
+	tc.R_high = R_high;
+	tc.t_high = t_high;
+	tc.crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+
+	if (ther_mtd_write(m, addr, &tc, sizeof(tc), NULL))
+		goto out;
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
+bool storage_read_high_temp_cal(float *R_high, float *t_high)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		*R_high = 0;
+		*t_high = 0;
+		goto out;
+	} else {
+
+		crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+		if (crc == tc.crc) {
+			*R_high = tc.R_high;
+			*t_high = tc.t_high;
+
+			ret = TRUE;
+		} else {
+			*R_high = 0;
+			*t_high = 0;
+		}
+	}
+	ret = TRUE;
+
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
+bool storage_write_temp_cal(float B_delta, float R25_delta)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		goto out;
+	}
+
+	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
+		goto out;
+	}
+
+	tc.magic = ZERO_CAL_MAGIC;
+	tc.B_delta = B_delta;
+	tc.R25_delta = R25_delta;
+	tc.crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+
+	if (ther_mtd_write(m, addr, &tc, sizeof(tc), NULL))
+		goto out;
+
+	ret = TRUE;
+
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
+bool storage_read_temp_cal(float *B_delta, float *R25_delta)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_TEMP_CAL * m->erase_size;
+	struct temp_cal tc;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &tc, sizeof(tc), NULL)) {
+		*B_delta = 0;
+		*R25_delta = 0;
+		goto out;
+	} else {
+
+		crc = crc7_be(0, (const uint8 *)&tc, OFFSET(struct temp_cal, crc));
+		if (crc == tc.crc) {
+			*B_delta = tc.B_delta;
+			*R25_delta = tc.R25_delta;
+			ret = TRUE;
+		} else {
+			*B_delta = 0;
+			*R25_delta = 0;
+		}
+	}
+	ret = TRUE;
+
+out:
+	ther_mtd_close(m);
+	return ret;
+}
+
 bool storage_is_formated(void)
 {
 	struct mtd_info*m = get_mtd();
@@ -890,79 +1100,168 @@ out:
 	return ret;
 }
 
-
-
-
-
-bool ther_storage_test1(void)
+bool storage_test(void)
 {
 	struct mtd_info*m = get_mtd();
 	struct ther_storage *ts = get_ts();
-	unsigned char i;
+	uint16 i, j;
+	uint8 data;
 	uint32 addr;
+	bool ret = FALSE;
 
-	P0_6 = 1;
 	if (ther_mtd_open(m))
 		return FALSE;
 
-	for (i = SECTOR_HISTORY_START; i <= SECTOR_HISTORY_END; i++) {
-		addr = m->erase_size * i;
-		print(LOG_DBG, "addr 0x%lx\n", addr);
-		if (ther_mtd_read(m, addr, ts->temp_read_buf, 13, NULL)) {
-			return FALSE;
-		}
-	}
-
-	ther_mtd_close(m);
-	P0_6 = 0;
-
-	return TRUE;
-}
-
-bool ther_storage_test(void)
-{
-	struct mtd_info*m = get_mtd();
-	struct ther_storage *ts = get_ts();
-	unsigned char i;
-	uint32 addr;
-	unsigned short b;
-
-	P0_6 = 1;
-	if (ther_mtd_open(m))
-		return FALSE;
-
-	for (i = SECTOR_HISTORY_START; i <= SECTOR_HISTORY_START; i++) {
+	print(LOG_DBG, MODULE "1. SPI sanity test\n");
+	print(LOG_DBG, MODULE "   erase sector -> write 0x00 -> check sector\n");
+	data = 0x0;
+	osal_memset(ts->temp_write_buf, data, BUF_LEN);
+	for (i = SECTOR_SYS; i < SECTOR_NR; i++) {
 		addr = m->erase_size * i;
 
 		ther_mtd_erase(m, addr, m->erase_size, NULL);
 
-		if (ther_mtd_read(m, addr, (void *)&b, 2, NULL)) {
-			return FALSE;
-		}
-		print(LOG_DBG, "read 0x%x\n", b);
-
-		ts->temp_read_buf[0] = 0x12;
-		if (ther_mtd_write(m, addr, ts->temp_read_buf, 1, NULL))
-			return FALSE;
-
-		if (ther_mtd_read(m, addr, (void *)&b, 2, NULL)) {
-			return FALSE;
-		}
-		print(LOG_DBG, "read 0x%x\n", b);
-
-		ts->temp_read_buf[1] = 0x34;
-		if (ther_mtd_write(m, addr + 1, ts->temp_read_buf + 1, 1, NULL))
-			return FALSE;
-
-		if (ther_mtd_read(m, addr, (void *)&b, 2, NULL)) {
-			return FALSE;
+		if (ther_mtd_write(m, addr, ts->temp_write_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   write sector %d failed\n", i);
+			goto out;
 		}
 
-		print(LOG_DBG, "read 0x%x\n", b);
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   read sector %d failed\n", i);
+			goto out;
+		}
+
+		for (j = 0; j < BUF_LEN; j++) {
+			if (ts->temp_read_buf[j] != data) {
+				print(LOG_DBG, MODULE "   Err: sector %d, offset %d is 0x%x(expected 0x%x)\n",
+						i, j, ts->temp_read_buf[i], data);
+				goto out;
+			}
+		}
 	}
 
-	ther_mtd_close(m);
-	P0_6 = 0;
+	print(LOG_DBG, MODULE "2. SPI Regression test\n");
 
-	return TRUE;
+	print(LOG_DBG, MODULE "   erase sector -> write 0xaa -> check sector\n");
+	data = 0xaa;
+	osal_memset(ts->temp_write_buf, data, BUF_LEN);
+	for (i = SECTOR_SYS; i < SECTOR_NR; i++) {
+		addr = m->erase_size * i;
+
+		ther_mtd_erase(m, addr, m->erase_size, NULL);
+
+		if (ther_mtd_write(m, addr, ts->temp_write_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   write sector %d failed\n", i);
+			goto out;
+		}
+
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   read sector %d failed\n", i);
+			goto out;
+		}
+
+		for (j = 0; j < BUF_LEN; j++) {
+			if (ts->temp_read_buf[j] != data) {
+				print(LOG_DBG, MODULE "   Err: sector %d, offset %d is 0x%x(expected 0x%x)\n",
+						i, j, ts->temp_read_buf[i], data);
+				goto out;
+			}
+		}
+	}
+
+	print(LOG_DBG, MODULE "   erase sector -> write 0x55 -> check sector\n");
+	data = 0x55;
+	osal_memset(ts->temp_write_buf, data, BUF_LEN);
+	for (i = SECTOR_SYS; i < SECTOR_NR; i++) {
+		addr = m->erase_size * i;
+
+		ther_mtd_erase(m, addr, m->erase_size, NULL);
+
+		if (ther_mtd_write(m, addr, ts->temp_write_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   write sector %d failed\n", i);
+			goto out;
+		}
+
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   read sector %d failed\n", i);
+			goto out;
+		}
+
+		for (j = 0; j < BUF_LEN; j++) {
+			if (ts->temp_read_buf[j] != data) {
+				print(LOG_DBG, MODULE "   Err: sector %d, offset %d is 0x%x(expected 0x%x)\n",
+						i, j, ts->temp_read_buf[i], data);
+				goto out;
+			}
+		}
+	}
+
+	print(LOG_DBG, MODULE "   erase sector -> write 0x5a -> check sector\n");
+	data = 0x5a;
+	osal_memset(ts->temp_write_buf, data, BUF_LEN);
+	for (i = SECTOR_SYS; i < SECTOR_NR; i++) {
+		addr = m->erase_size * i;
+
+		ther_mtd_erase(m, addr, m->erase_size, NULL);
+
+		if (ther_mtd_write(m, addr, ts->temp_write_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   write sector %d failed\n", i);
+			goto out;
+		}
+
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   read sector %d failed\n", i);
+			goto out;
+		}
+
+		for (j = 0; j < BUF_LEN; j++) {
+			if (ts->temp_read_buf[j] != data) {
+				print(LOG_DBG, MODULE "   Err: sector %d, offset %d is 0x%x(expected 0x%x)\n",
+						i, j, ts->temp_read_buf[i], data);
+				goto out;
+			}
+		}
+	}
+
+	print(LOG_DBG, MODULE "   erase sector -> write 0xa5 -> check sector\n");
+	data = 0xa5;
+	osal_memset(ts->temp_write_buf, data, BUF_LEN);
+	for (i = SECTOR_SYS; i < SECTOR_NR; i++) {
+		addr = m->erase_size * i;
+
+		ther_mtd_erase(m, addr, m->erase_size, NULL);
+
+		if (ther_mtd_write(m, addr, ts->temp_write_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   write sector %d failed\n", i);
+			goto out;
+		}
+
+		if (ther_mtd_read(m, addr, ts->temp_read_buf, BUF_LEN, NULL)) {
+			print(LOG_DBG, MODULE "   read sector %d failed\n", i);
+			goto out;
+		}
+
+		for (j = 0; j < BUF_LEN; j++) {
+			if (ts->temp_read_buf[j] != data) {
+				print(LOG_DBG, MODULE "   Err: sector %d, offset %d is 0x%x(expected 0x%x)\n",
+						i, j, ts->temp_read_buf[i], data);
+				goto out;
+			}
+		}
+	}
+	ret = TRUE;
+
+out:
+	ther_mtd_close(m);
+
+	print(LOG_INFO, MODULE "Format SPI storage\n");
+	if (!storage_format())
+		print(LOG_INFO, MODULE "fail to format storage\n");
+
+	if(ret)
+		print(LOG_DBG, MODULE "OK\n");
+	else
+		print(LOG_DBG, MODULE "ERROR\n");
+
+	return ret;
 }

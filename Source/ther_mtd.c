@@ -46,6 +46,11 @@ int8 ther_mtd_erase(struct mtd_info* m, uint32 addr, uint32 len, uint32 *ret_len
 		return -MTD_ERR_ADDR_NOT_ALIGN;
 	}
 
+	if (len == m->size) {
+		ret = m->erase(addr, m->size);
+		return ret;
+	}
+
 	while (addr < end_addr) {
 		ret = m->erase(addr, m->erase_size);
 		if (ret)

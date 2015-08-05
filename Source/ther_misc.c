@@ -16,8 +16,9 @@
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_board.h"
-#include "ther_uart.h"
+#include "OnBoard.h"
 
+#include "ther_uart.h"
 #include "thermometer.h"
 #include "ther_misc.h"
 
@@ -42,14 +43,20 @@ enum {
 	WDT_INT_1_MS
 };
 
-void start_watchdog_timer(void)
+void start_watchdog_timer(uint8 interval)
 {
-	WDCTL = (WDT_MODE_WATCHDOG << WDT_MODE_OFFSET) | (WDT_INT_1S << WDT_INT_OFFSET);
+	WDCTL = (WDT_MODE_WATCHDOG << WDT_MODE_OFFSET) | (interval << WDT_INT_OFFSET);
 }
 
 void feed_watchdog(void)
 {
 	WD_KICK();
+}
+
+void system_reset(void)
+{
+//	start_watchdog_timer(WDT_INT_15_MS);
+	SystemReset();
 }
 
 void delay(uint32 cnt)
@@ -78,7 +85,7 @@ static const char *reset_reason[] = {
 
 const char *get_reset_reason(void)
 {
-	uint8 reason = (SLEEPSTA >> 3) & 0X3;
+	uint8 reason = (SLEEPSTA >> 3) & 0X3; // ResetReason()
 
 	return reset_reason[reason];
 }

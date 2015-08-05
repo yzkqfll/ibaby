@@ -624,7 +624,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = ther_get_temp();
+			ti->temp_current = (uint16)(ther_get_temp() * 10);
 			ther_temp_power_off();
 
 			if (ti->ble_connect) {
