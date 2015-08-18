@@ -154,6 +154,11 @@ unsigned short ble_get_gap_handle(void)
 	return bi->gap_handle;
 }
 
+void ble_get_mac(uint8 *mac)
+{
+	GAPRole_GetParameter(GAPROLE_BD_ADDR, mac);
+}
+
 /*
  * Will be invoked when GAP state changed
  */

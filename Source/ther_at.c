@@ -33,6 +33,7 @@
 #include "ther_port.h"
 #include "ther_misc.h"
 #include "ther_data.h"
+#include "ther_ble.h"
 
 #define MODULE "[THER AT] "
 
@@ -43,6 +44,8 @@
 #define AT_MODE "AT+MODE="
 #define AT_MODE_Q "AT+MODE"
 #define AT_RESET "AT+RESET"
+
+#define AT_MAC "AT+MAC"
 
 /* zero cal */
 #define AT_LDO "AT+LDO="
@@ -157,6 +160,15 @@ static uint8 at_reset(char *ret_buf)
 	system_reset();
 
 	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static uint8 at_get_mac(char *ret_buf)
+{
+	uint8 mac[B_ADDR_LEN] = {0};
+	ble_get_mac(mac);
+
+	return sprintf((char *)ret_buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+			mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 }
 
 static uint8 at_set_ldo_on(char *ret_buf)
@@ -527,6 +539,10 @@ void ther_at_handle(char *cmd_buf, uint8 len, char *ret_buf, uint8 *ret_len)
 	/* AT+RESET */
 	} else if (strcmp((char *)cmd_buf, AT_RESET) == 0) {
 		*ret_len = at_reset(ret_buf);
+
+	/* AT+MAC */
+	} else if (strcmp((char *)cmd_buf, AT_MAC) == 0) {
+		*ret_len = at_get_mac(ret_buf);
 
 	/* AT+LDO=x */
 	} else if (strncmp((char *)cmd_buf, AT_LDO, strlen(AT_LDO)) == 0) {
