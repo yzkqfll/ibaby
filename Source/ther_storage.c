@@ -31,12 +31,14 @@
 #include "ther_misc.h"
 #include "ther_data.h"
 #include "ther_crc.h"
+#include "config.h"
 
 #define MODULE "[STORAGE] "
 
 enum {
 	SECTOR_SYS = 0,
 
+	SECTOR_CONFIG,
 	SECTOR_ZERO_CAL,
 	SECTOR_TEMP_CAL,
 
@@ -54,18 +56,27 @@ enum {
 /*
  * system information
  */
-#define SYS_MAGIC 0x9527
-#define STORAGE_FORMATED_FLAG 0x3333
+#define SYS_MAGIC 0x1111
+#define STORAGE_FORMATED_FLAG 0xAAAA
 struct sys_info {
 	unsigned short magic;
 	unsigned short storage_formated;
 	uint8 crc;
 };
 
+/* config information */
+#define CONFIG_MAGIC 0x2222
+struct config_info {
+	uint16 magic;
+	uint8 warning_enabled;
+	uint16 high_temp_threshold;
+	uint8 crc;
+};
+
 /*
  * calibration
  */
-#define ZERO_CAL_MAGIC 0x1024
+#define ZERO_CAL_MAGIC 0x3333
 struct zero_cal {
 	unsigned short magic;
     unsigned short hw_adc0;
@@ -73,7 +84,7 @@ struct zero_cal {
     uint8 crc;
 };
 
-#define TEMP_CAL_MAGIC 0xF00D
+#define TEMP_CAL_MAGIC 0x4444
 struct temp_cal {
 	unsigned short magic;
 
@@ -96,7 +107,7 @@ struct his_unit {
 	uint16 status;
 };
 
-#define HIS_MNGT_UNIT_MAGIC 0x1908
+#define HIS_MNGT_UNIT_MAGIC 0x5555
 #define HIS_MNGT_UNIT_OBSOLETE 0xDEAD
 struct his_mngt_unit {
 	struct his_unit header;
@@ -106,7 +117,7 @@ struct his_mngt_unit {
 	uint8 crc;
 };
 
-#define HIS_TEMP_UNIT_MAGIC 0x1909
+#define HIS_TEMP_UNIT_MAGIC 0x6666
 #define HIS_TEMP_UNIT_OBSOLETE 0xDEAD
 struct his_temp_unit {
 	struct his_unit header;
@@ -1072,6 +1083,135 @@ bool storage_format(void)
 
 	if (ther_mtd_write(m, addr, &info, sizeof(info), NULL)) {
 		goto out;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+
+bool storage_write_high_temp_enabled(uint8 enabled)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_CONFIG * m->erase_size;
+	struct config_info ci;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
+		goto out;
+	} else {
+		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+		if (crc != ci.crc)
+			ci.high_temp_threshold = DEFAULT_HIGH_TEMP_THRESHOLD;
+	}
+
+	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
+		goto out;
+	}
+
+	ci.warning_enabled = enabled;
+	ci.crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+
+	if (ther_mtd_write(m, addr, &ci, sizeof(ci), NULL))
+		goto out;
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+bool storage_read_high_temp_enabled(uint8 *enabled)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_CONFIG * m->erase_size;
+	struct config_info ci;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
+		goto out;
+	} else {
+		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+		if (crc != ci.crc)
+			goto out;
+
+		*enabled = ci.warning_enabled;
+	}
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+bool storage_write_high_temp_threshold(uint16 high_temp_threshold)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_CONFIG * m->erase_size;
+	struct config_info ci;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
+		goto out;
+	} else {
+		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+		if (crc != ci.crc)
+			ci.warning_enabled = FALSE;
+	}
+
+	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
+		goto out;
+	}
+
+	ci.high_temp_threshold = high_temp_threshold;
+	ci.crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+
+	if (ther_mtd_write(m, addr, &ci, sizeof(ci), NULL))
+		goto out;
+
+	ret = TRUE;
+out:
+	ther_mtd_close(m);
+
+	return ret;
+}
+
+bool storage_read_high_temp_threshold(uint16 *high_temp_threshold)
+{
+	struct mtd_info*m = get_mtd();
+	int8 ret = FALSE;
+	uint32 addr = SECTOR_CONFIG * m->erase_size;
+	struct config_info ci;
+	uint8 crc;
+
+	if (ther_mtd_open(m))
+		return ret;
+
+	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
+		goto out;
+	} else {
+		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+		if (crc != ci.crc)
+			goto out;
+
+		*high_temp_threshold = ci.high_temp_threshold;
 	}
 
 	ret = TRUE;

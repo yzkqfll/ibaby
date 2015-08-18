@@ -19,6 +19,11 @@ void storage_show_info(void);
 void ther_storage_init(void);
 void ther_storage_exit(void);
 
+bool storage_write_high_temp_enabled(uint8 enabled);
+bool storage_read_high_temp_enabled(uint8 *enabled);
+bool storage_write_high_temp_threshold(uint16 high_temp_threshold);
+bool storage_read_high_temp_threshold(uint16 *high_temp_threshold);
+
 bool storage_is_formated(void);
 bool storage_format(void);
 bool storage_erase(void);

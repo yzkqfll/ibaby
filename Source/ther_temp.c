@@ -89,7 +89,7 @@ static float calculate_Rt_by_adc1(unsigned short adc)
 }
 
 /*
- * 377 => 37.7 celsius
+ *
  */
 static float calculate_temp_by_Rt(float Rt, float B_delta, float R25_delta)
 {
@@ -234,12 +234,12 @@ static float ther_get_ch_temp_print(unsigned char ch)
 }
 
 /*
- * return value: 377 => 37.7 Celsius
+ *
  */
 float ther_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
-	float temp; /* 377 => 37.7 Celsius */
+	float temp;
 
 	t->channel = HAL_ADC_CHANNEL_0;
 	temp = ther_get_ch_temp_print(t->channel);
