@@ -8,5 +8,8 @@
 
 #define FW_STRING_LEN 25
 
+
+#define DEFAULT_HIGH_TEMP_THRESHOLD 3900
+
 #endif
 

@@ -125,7 +125,7 @@ static void change_measure_timer(struct ther_info *ti, unsigned long new_interva
 	}
 }
 
-static void encap_first_picture_param(struct ther_info *ti, struct display_param *param)
+static void encap_picture_param(struct ther_info *ti, struct display_param *param)
 {
 	unsigned short time;
 	UTCTimeStruct utc;
@@ -133,12 +133,11 @@ static void encap_first_picture_param(struct ther_info *ti, struct display_param
 	osal_ConvertUTCTime(&utc, osal_getClock());
 	time = ((unsigned short)utc.hour << 8) | utc.minutes;
 
-	param->picture = OLED_PICTURE1;
-	param->remain_ms = DISPLAY_TIME;
 	param->time = time;
-	param->batt_level = 0;
-	param->ble_link = LINK_ON;
+	param->batt_percentage = ti->batt_percentage;
+	param->ble_link = ti->ble_connect;
 	param->temp = ti->temp_current;
+	param->max_temp = ti->temp_max;
 }
 
 static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
@@ -148,20 +147,19 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 		print(LOG_DBG, MODULE "button pressed\n");
 
 		if (ti->power_mode == PM_ACTIVE) {
+			struct display_param param;
 
 			if (ti->display_picture > OLED_PICTURE_NONE) {
 				print(LOG_DBG, MODULE "ignore button press when picture is %d\n", ti->display_picture);
 				break;
 			}
 
+			encap_picture_param(ti, &param);
 			if (ti->display_picture == OLED_PICTURE_NONE) {
-				struct display_param param;
-
-				encap_first_picture_param(ti, &param);
-				oled_show_picture(&param);
+				oled_show_picture(OLED_PICTURE1, DISPLAY_TIME, &param);
 
 			} else {
-				oled_show_next_picture(DISPLAY_TIME);
+				oled_show_next_picture(DISPLAY_TIME, &param);
 			}
 
 		} else if (ti->power_mode == PM_3) {
@@ -333,8 +331,10 @@ static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_statu
 		ti->temp_notification_enable = FALSE;
 
 		ti->ble_connect = FALSE;
+		oled_update_picture(OLED_CONTENT_LINK, FALSE);
 	} else if (msg->type == BLE_CONNECT) {
 		ti->ble_connect = TRUE;
+		oled_update_picture(OLED_CONTENT_LINK, TRUE);
 
 		if (!ti->his_temp_uploading) {
 			ti->his_temp_uploading = TRUE;
@@ -384,8 +384,8 @@ static void ther_display_event_report(unsigned char event, uint16 arg)
 			/*
 			 * show first picture after welcome
 			 */
-			encap_first_picture_param(ti, &param);
-			oled_show_picture(&param);
+			encap_picture_param(ti, &param);
+			oled_show_picture(OLED_PICTURE1, DISPLAY_TIME, &param);
 
 		} else {
 			ti->display_picture = OLED_PICTURE_NONE;
@@ -433,7 +433,10 @@ static void ther_device_init(struct ther_info *ti)
 
 	/* temp init */
 	ther_temp_init();
-
+/*
+	read high temp thershold
+	??
+*/
 	/* ble init */
 	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event);
 
@@ -463,8 +466,6 @@ static void ther_device_exit_post(struct ther_info *ti)
 
 static void ther_system_power_on(struct ther_info *ti)
 {
-	struct display_param param;
-
 	ther_device_init(ti);
 
 	/*
@@ -475,9 +476,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	/*
 	 * show welcome picture
 	 */
-	param.picture = OLED_PICTURE_WELCOME;
-	param.remain_ms = DISPLAY_WELCOME_TIME;
-	oled_show_picture(&param);
+	oled_show_picture(OLED_PICTURE_WELCOME, DISPLAY_WELCOME_TIME, NULL);
 
 	/*
 	 * start temp measurement
@@ -489,7 +488,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	/*
 	 * batt measure
 	 */
-	osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
+	osal_start_timerEx( ti->task_id, TH_BATT_EVT, 2000);
 
 	/* test */
 //	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
@@ -497,8 +496,6 @@ static void ther_system_power_on(struct ther_info *ti)
 
 static void ther_system_power_off_pre(struct ther_info *ti)
 {
-	struct display_param param;
-
 	/* test */
 	osal_stop_timerEx(ti->task_id, TH_TEST_EVT);
 
@@ -521,9 +518,7 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	/*
 	 * oled says goodbye
 	 */
-	param.picture = OLED_PICTURE_GOODBYE;
-	param.remain_ms = DISPLAY_GOODBYE_TIME;
-	oled_show_picture(&param);
+	oled_show_picture(OLED_PICTURE_GOODBYE, DISPLAY_GOODBYE_TIME, NULL);
 
 	osal_start_timerEx(ti->task_id, TH_POWER_OFF_EVT, SYSTEM_POWER_OFF_TIME);
 
@@ -591,16 +586,12 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 	/* batt measure */
 	if (events & TH_BATT_EVT) {
 		if (ti->mode == NORMAL_MODE) {
-			if (ti->display_picture != OLED_PICTURE_NONE) {
-				osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_CONFILCT_DELAY);
+			Batt_MeasLevel();
+			ti->batt_percentage = ther_batt_get_percentage(FALSE);
+			oled_update_picture(OLED_CONTENT_BATT, ti->batt_percentage);
+			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
 
-			} else {
-				Batt_MeasLevel();
-				ti->batt_percentage = ther_batt_get_percentage(FALSE);
-				print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
-
-				osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
-			}
+			osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
 		}
 
 		return (events ^ TH_BATT_EVT);
@@ -624,8 +615,13 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = (uint16)(ther_get_temp() * 10);
+			ti->temp_current = (uint16)(ther_get_temp() * 100 + 0.5);
 			ther_temp_power_off();
+
+			if (ti->temp_max < ti->temp_current) {
+				ti->temp_max = ti->temp_current;
+				oled_update_picture(OLED_CONTENT_MAX_TEMP, ti->temp_max);
+			}
 
 			if (ti->ble_connect) {
 				if (ti->temp_notification_enable) {
@@ -638,9 +634,8 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				ther_save_temp_to_local(ti->temp_current);
 			}
 
-			if (ti->display_picture == OLED_PICTURE1 &&
-				ti->temp_current != ti->temp_last_saved) {
-				oled_update_picture(OLED_PICTURE1, OLED_CONTENT_TEMP, ti->temp_current);
+			if (ti->temp_current != ti->temp_last_saved) {
+				oled_update_picture(OLED_CONTENT_TEMP, ti->temp_current);
 			}
 
 			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);

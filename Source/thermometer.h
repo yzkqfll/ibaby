@@ -105,6 +105,7 @@ struct ther_info {
 	unsigned char temp_measure_stage;
 	unsigned short temp_last_saved;
 	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
+	uint16 temp_max;
 	unsigned long temp_measure_interval;
 
 	bool his_temp_uploading;
