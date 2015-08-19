@@ -84,7 +84,8 @@ static const unsigned short musics[BUZZER_MUSIC_NR][LEN] =  {
 	TONE_HIGH, 300, 200, 200, 100, /* power on */
 	TONE_HIGH, 300, 200, 200, 100, /* power off */
 	TONE_LOW, 400, 200, 300, 100,  /* send temp */
-	TONE_LOW, 400, 200, 300, 100,  /* warning */
+	TONE_LOW, 400, 200, 300, 100,  /* high temp warning */
+	TONE_LOW, 400, 200, 300, 100,  /* low batt warning */
 };
 
 static void start_buzzer(unsigned char tone)

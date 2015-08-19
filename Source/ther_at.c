@@ -47,6 +47,9 @@
 
 #define AT_MAC "AT+MAC"
 
+#define AT_HIGH_TEMP_WARNING "AT+HTW="
+#define AT_HIGH_TEMP_WARNING_Q "AT+HTW"
+
 /* zero cal */
 #define AT_LDO "AT+LDO="
 #define AT_LDO_Q "AT+LDO"
@@ -105,6 +108,15 @@ static void enter_cal_mode(struct ther_info *ti)
 	 * stop batt measurement
 	 */
 	osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
+
+
+	/*
+	 * stop auto power off
+	 */
+	osal_stop_timerEx(ti->task_id, TH_AUTO_POWER_OFF_EVT);
+
+	osal_stop_timerEx(ti->task_id, TH_HIGH_TEMP_WARNING_EVT);
+	osal_stop_timerEx(ti->task_id, TH_LOW_BATT_WARNING_EVT);
 }
 
 
@@ -170,6 +182,35 @@ static uint8 at_get_mac(char *ret_buf)
 	return sprintf((char *)ret_buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
 			mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 }
+
+static uint8 at_set_htw(char *ret_buf, uint8 warning_enabled, uint16 high_temp_threshold)
+{
+	struct ther_info *ti = get_ti();
+
+	/* read high temp thershold */
+	if (!storage_write_high_temp_enabled(warning_enabled)) {
+		return sprintf((char *)ret_buf, "%s\n", "ERROR");
+	}
+
+	if (!storage_write_high_temp_threshold(high_temp_threshold)) {
+		return sprintf((char *)ret_buf, "%s\n", "ERROR");
+	}
+
+	ti->warning_enabled = warning_enabled;
+	ti->high_temp_threshold = high_temp_threshold;
+	ti->next_warning_threshold = ti->high_temp_threshold;
+
+	return sprintf((char *)ret_buf, "%s\n", "OK");
+}
+
+static uint8 at_get_htw(char *ret_buf)
+{
+	struct ther_info *ti = get_ti();
+
+	return sprintf((char *)ret_buf, "%d,%d,%d\n",
+			ti->warning_enabled, ti->high_temp_threshold, ti->next_warning_threshold);
+}
+
 
 static uint8 at_set_ldo_on(char *ret_buf)
 {
@@ -543,6 +584,26 @@ void ther_at_handle(char *cmd_buf, uint8 len, char *ret_buf, uint8 *ret_len)
 	/* AT+MAC */
 	} else if (strcmp((char *)cmd_buf, AT_MAC) == 0) {
 		*ret_len = at_get_mac(ret_buf);
+
+	/* AT+HTW=x,x */
+	} else if (strncmp((char *)cmd_buf, AT_HIGH_TEMP_WARNING, strlen(AT_HIGH_TEMP_WARNING)) == 0) {
+		uint8 warning_enabled;
+		uint16 high_temp_threshold;
+
+		p = cmd_buf + strlen(AT_HIGH_TEMP_WARNING);
+		warning_enabled =  atoi(p);
+
+		p = strstr((const char *)cmd_buf, ",");
+		if (p) {
+			high_temp_threshold = atoi(p + 1);
+			*ret_len = at_set_htw(ret_buf, warning_enabled, high_temp_threshold);
+		} else {
+			*ret_len = sprintf((char *)ret_buf, "%s\n", "+THRESHOLD:ERROR");
+		}
+
+	/* AT+HTW */
+	} else if (strcmp((char *)cmd_buf, AT_HIGH_TEMP_WARNING_Q) == 0) {
+		*ret_len = at_get_htw(ret_buf);
 
 	/* AT+LDO=x */
 	} else if (strncmp((char *)cmd_buf, AT_LDO, strlen(AT_LDO)) == 0) {

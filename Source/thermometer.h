@@ -48,6 +48,7 @@ extern "C"
 /*********************************************************************
  * INCLUDES
  */
+#include "OSAL_Clock.h"
 
 /*********************************************************************
  * CONSTANTS
@@ -64,7 +65,10 @@ extern "C"
 #define TH_WATCHDOG_EVT				0x0040
 #define TH_BATT_EVT					0x0080
 #define TH_HIS_TEMP_RESTORE_EVT		0x0100
-#define TH_TEST_EVT					0x0800
+#define TH_HIGH_TEMP_WARNING_EVT	0x0200
+#define TH_LOW_BATT_WARNING_EVT		0x0400
+#define TH_AUTO_POWER_OFF_EVT		0x0800
+#define TH_TEST_EVT					0x1000
 
 enum {
 	NORMAL_MODE = 0,
@@ -78,6 +82,8 @@ struct ther_info {
 	uint8 lock_users;
 
 	bool ble_connect;
+
+	UTCTime start_sec;
 
 	/*
 	 * mode
@@ -115,10 +121,17 @@ struct ther_info {
 
 	/* batt */
 	unsigned char batt_percentage;
+	bool batt_warning_on;
 
 	/* private service */
-	unsigned char warning_enabled;
-	unsigned short high_temp; /* high warning temp */
+	uint8 warning_enabled;
+	bool temp_warning_on;
+	uint16 high_temp_threshold; /* high warning temp */
+	uint16 next_warning_threshold;
+
+	/* auto power off */
+	uint16 previous_temp;
+	uint8 same_temp_number;
 };
 extern struct ther_info ther_info;
 

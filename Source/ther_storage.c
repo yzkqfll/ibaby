@@ -1101,16 +1101,18 @@ bool storage_write_high_temp_enabled(uint8 enabled)
 	struct config_info ci;
 	uint8 crc;
 
+//	print(LOG_INFO, MODULE "set high temp enabled %d\n", enabled);
+
 	if (ther_mtd_open(m))
 		return ret;
 
 	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
 		goto out;
-	} else {
-		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
-		if (crc != ci.crc)
-			ci.high_temp_threshold = DEFAULT_HIGH_TEMP_THRESHOLD;
 	}
+
+	crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+	if (crc != ci.crc)
+		ci.high_temp_threshold = DEFAULT_HIGH_TEMP_THRESHOLD;
 
 	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
 		goto out;
@@ -1140,15 +1142,14 @@ bool storage_read_high_temp_enabled(uint8 *enabled)
 	if (ther_mtd_open(m))
 		return ret;
 
-	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
+	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL))
 		goto out;
-	} else {
-		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
-		if (crc != ci.crc)
-			goto out;
 
-		*enabled = ci.warning_enabled;
-	}
+	crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+	if (crc != ci.crc)
+		goto out;
+
+	*enabled = ci.warning_enabled;
 
 	ret = TRUE;
 out:
@@ -1165,16 +1166,21 @@ bool storage_write_high_temp_threshold(uint16 high_temp_threshold)
 	struct config_info ci;
 	uint8 crc;
 
+//	print(LOG_INFO, MODULE "set high temp threshold %d\n", high_temp_threshold);
+
+	if (high_temp_threshold < MIN_TEMP_THRESHOLD ||  high_temp_threshold > MAX_TEMP_THRESHOLD)
+		return ret;
+
 	if (ther_mtd_open(m))
 		return ret;
 
 	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
 		goto out;
-	} else {
-		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
-		if (crc != ci.crc)
-			ci.warning_enabled = FALSE;
 	}
+
+	crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+	if (crc != ci.crc)
+		ci.warning_enabled = TRUE;
 
 	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
 		goto out;
@@ -1206,13 +1212,13 @@ bool storage_read_high_temp_threshold(uint16 *high_temp_threshold)
 
 	if (ther_mtd_read(m, addr, &ci, sizeof(ci), NULL)) {
 		goto out;
-	} else {
-		crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
-		if (crc != ci.crc)
-			goto out;
-
-		*high_temp_threshold = ci.high_temp_threshold;
 	}
+
+	crc = crc7_be(0, (const uint8 *)&ci, OFFSET(struct config_info, crc));
+	if (crc != ci.crc)
+		goto out;
+
+	*high_temp_threshold = ci.high_temp_threshold;
 
 	ret = TRUE;
 out:

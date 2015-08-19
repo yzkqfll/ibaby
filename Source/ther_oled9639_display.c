@@ -20,6 +20,7 @@
 #include "OSAL_Clock.h"
 #include "OSAL_PwrMgr.h"
 
+#include "config.h"
 #include "ther_uart.h"
 
 #include "thermometer.h"
@@ -310,13 +311,12 @@ static void show_temp(bool show, uint16 temp)
 {
 	uint8 first_num, sec_num, third_num, forth_num;
 
+	temp += 5; /* 4 she 5 ru*/
+
 	first_num = temp / 1000;
 	sec_num = (temp / 100) % 10;
 	third_num = (temp / 10) % 10;
 	forth_num = temp % 10;
-
-	if (forth_num > 5)
-		third_num++;
 
 	if (show) {
 		oled_drv_write_block(2, 5, TEMP_1_START_COL, TEMP_1_END_COL, number_24x13[first_num % 10]);
@@ -406,13 +406,12 @@ static void show_max_temp(bool show, uint16 temp)
 {
 	uint8 first_num, sec_num, third_num, forth_num;
 
+	temp += 5; /* 4 she 5 ru*/
+
 	first_num = temp / 1000;
 	sec_num = (temp / 100) % 10;
 	third_num = (temp / 10) % 10;
 	forth_num = temp % 10;
-
-	if (forth_num > 5)
-		third_num++;
 
 	if (show) {
 		oled_drv_write_block(1, 4, MAX_TEMP_1_START_COL, MAX_TEMP_1_END_COL, number_24x13[first_num % 10]);
@@ -619,8 +618,10 @@ void oled_display_state_machine(void)
 {
 	struct oled_display *od = &display;
 
+#ifdef DEBUG_OLED_DISPLAY
 	print(LOG_DBG, MODULE "goto state <%s>\n",
 			state[get_next_state(od, od->cur_state)]);
+#endif
 
 	od->cur_state = get_next_state(od, od->cur_state);
 

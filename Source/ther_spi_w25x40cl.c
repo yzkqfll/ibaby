@@ -237,7 +237,7 @@ int8 ther_spi_w25x_init(struct mtd_info *m)
 	cmd = CMD_JEDEC_ID;
 	ther_spi_send_then_recv(&cmd, 1, id_recv, 3);
 
-	if(id_recv[0] != MF_ID) {
+	if(id_recv[0] != MF_ID && id_recv[0] != 0x7F) {
 		print(LOG_INFO, MODULE "Manufacturers ID(%x) error!\n", id_recv[0]);
 		return -MTD_ERR_MF_ID;
 	}
@@ -254,6 +254,8 @@ int8 ther_spi_w25x_init(struct mtd_info *m)
 
 	if(memory_type_capacity == MTC_W25X40CL) {
 		print(LOG_INFO, MODULE "W25X40CL detection is ok\n");
+	} else if (memory_type_capacity == 0x9D7E) {
+		print(LOG_INFO, MODULE "IS25LD040 detection is ok\n");
 	} else {
 		print(LOG_INFO, MODULE "memory type(%x) capacity(%x) error!\n", id_recv[1], id_recv[2]);
 		return -MTD_ERR_MEM_TYPE_CAP;

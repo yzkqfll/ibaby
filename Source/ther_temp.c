@@ -18,6 +18,8 @@
 #include "hal_drivers.h"
 #include "math.h"
 
+#include "config.h"
+
 #include "hal_board.h"
 
 #include "ther_uart.h"
@@ -29,7 +31,7 @@
 
 #define MODULE "[TEMP   ] "
 
-#define TEMP_MARGIN 2.0 /* 2 celsius */
+#define TEMP_MARGIN 1.0 /* 2 celsius */
 #define CH0_TEMP_MIN 29.0
 #define CH0_TEMP_MAX 45.0
 
@@ -41,9 +43,6 @@ struct ther_temp {
 	float B_delta;
 	float R25_delta;
 
-	/* save power */
-	unsigned short low_presision_pre_adc;
-	unsigned short low_presision_pre_temp;
 };
 static struct ther_temp ther_temp;
 
@@ -130,6 +129,17 @@ unsigned short ther_get_hw_adc(unsigned char ch)
 	return adc;
 }
 
+static uint16 ther_adjust_adc1(uint16 adc1)
+{
+/*
+	float C16 = 22;
+	float CADC = 0.775;
+	adc1 * (C16 + CADC) / C16
+*/
+
+	return adc1 * 1.01;
+}
+
 unsigned short ther_get_adc(unsigned char ch)
 {
 	struct ther_temp *t = &ther_temp;
@@ -139,8 +149,8 @@ unsigned short ther_get_adc(unsigned char ch)
 
 	if (ch == HAL_ADC_CHANNEL_0)
 		adc += t->adc0_delta;
-	else
-		adc += 0;
+	else if (ch == HAL_ADC_CHANNEL_1)
+		adc = ther_adjust_adc1(adc);
 
 	return adc;
 }
@@ -227,6 +237,10 @@ static float ther_get_ch_temp_print(unsigned char ch)
 	/* Rt -> temp */
 	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
+#ifdef PRE_RELEASE
+	temp -= 1;
+#endif
+
 	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
 			ch, adc, Rt, temp);
 
@@ -241,14 +255,16 @@ float ther_get_temp(void)
 	struct ther_temp *t = &ther_temp;
 	float temp;
 
-	t->channel = HAL_ADC_CHANNEL_0;
+//	t->channel = HAL_ADC_CHANNEL_1;
 	temp = ther_get_ch_temp_print(t->channel);
 
-	if ((t->channel == HAL_ADC_CHANNEL_1) && (temp > CH0_TEMP_MIN + TEMP_MARGIN)) {
-		t->channel = HAL_ADC_CHANNEL_0;
+	if (t->channel == HAL_ADC_CHANNEL_1) {
+		if (temp > CH0_TEMP_MIN + TEMP_MARGIN && temp < CH0_TEMP_MAX - TEMP_MARGIN)
+			t->channel = HAL_ADC_CHANNEL_0;
 
-	} else if ((t->channel == HAL_ADC_CHANNEL_0) && (temp < CH0_TEMP_MIN - TEMP_MARGIN)) {
-		t->channel = HAL_ADC_CHANNEL_1;
+	} else if (t->channel == HAL_ADC_CHANNEL_0) {
+		if (temp < CH0_TEMP_MIN - TEMP_MARGIN || temp > CH0_TEMP_MAX + TEMP_MARGIN)
+			t->channel = HAL_ADC_CHANNEL_1;
 	}
 
 	return temp;

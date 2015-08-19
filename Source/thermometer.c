@@ -36,6 +36,8 @@
 #include "OSAL_Clock.h"
 
 #include "config.h"
+
+#include "config.h"
 #include "ther_uart.h"
 #include "ther_uart_drv.h"
 
@@ -66,7 +68,7 @@ enum {
 
 struct ther_info ther_info;
 
-#define SEC_TO_MS(sec) ((sec) * 1000)
+#define SEC_TO_MS(sec) ((sec) * 1000L)
 
 /**
  * Display
@@ -82,6 +84,9 @@ struct ther_info ther_info;
 #define SYSTEM_POWER_ON_DELAY 100 /* ms */
 #define SYSTEM_POWER_OFF_TIME SEC_TO_MS(3)
 
+#define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600)
+#define AUTO_POWER_OFF_NUMBER_THRESHOLD 6
+
 /*
  * Temp measurement
  */
@@ -93,6 +98,8 @@ struct ther_info ther_info;
 #define HIS_TEMP_RESTORE_WAIT_ENABLE SEC_TO_MS(5)
 #define HIS_TEMP_UPLOADING_INTERVAL 100
 
+#define HIGH_TEMP_WARNING_INTERVAL SEC_TO_MS(5)
+
 /*
  * Watchdog
  */
@@ -103,6 +110,9 @@ struct ther_info ther_info;
  */
 #define BATT_MEASURE_INTERVAL 120000
 #define BATT_MEASURE_CONFILCT_DELAY 5000
+
+#define LOW_BATT_WARNING_THRESHOLD 10 /* 10% */
+#define LOW_BATT_WARNING_INTERVAL SEC_TO_MS(5)
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -130,7 +140,7 @@ static void encap_picture_param(struct ther_info *ti, struct display_param *para
 	unsigned short time;
 	UTCTimeStruct utc;
 
-	osal_ConvertUTCTime(&utc, osal_getClock());
+	osal_ConvertUTCTime(&utc, osal_getClock() - ti->start_sec);
 	time = ((unsigned short)utc.hour << 8) | utc.minutes;
 
 	param->time = time;
@@ -140,8 +150,26 @@ static void encap_picture_param(struct ther_info *ti, struct display_param *para
 	param->max_temp = ti->temp_max;
 }
 
+static void ther_clear_high_temp_warning(struct ther_info *ti)
+{
+	if (ti->temp_warning_on) {
+		ti->next_warning_threshold += 50; /* 0.5 C */
+
+		ti->temp_warning_on = FALSE;
+		osal_stop_timerEx(ti->task_id, TH_HIGH_TEMP_WARNING_EVT);
+	}
+}
+
+static void ther_user_active(struct ther_info *ti)
+{
+	ti->same_temp_number = 0;
+	ther_clear_high_temp_warning(ti);
+}
+
 static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 {
+	ther_user_active(ti);
+
 	switch (msg->type) {
 	case SHORT_PRESS:
 		print(LOG_DBG, MODULE "button pressed\n");
@@ -179,8 +207,10 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 		} else if (ti->power_mode == PM_3) {
 			print(LOG_DBG, MODULE "power up in long press button\n");
-			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
-			ti->power_mode = PM_ACTIVE;
+/*			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
+			ti->power_mode = PM_ACTIVE;*/
+
+			start_watchdog_timer(10);
 		}
 
 		break;
@@ -251,6 +281,7 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 {
 	struct ther_info *ti = &ther_info;
 	UTCTimeStruct utc;
+	uint16 high_temp_threshold;
 
 	switch (event) {
 	case THER_PS_GET_WARNING_ENABLED:
@@ -266,18 +297,26 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 
 	case THER_PS_CLEAR_WARNING:
 		print(LOG_DBG, MODULE "clear warning: %d\n", *data);
-		// TODO
+		ther_clear_high_temp_warning(ti);
 		break;
 
 	case THER_PS_GET_HIGH_WARN_TEMP:
-		memcpy(data, &ti->high_temp, sizeof(ti->high_temp));
-		*len = sizeof(ti->high_temp);
+		memcpy(data, &ti->high_temp_threshold, sizeof(ti->high_temp_threshold));
+		*len = sizeof(ti->high_temp_threshold);
 		print(LOG_DBG, MODULE "get high temp: %d\n", *(unsigned short *)data);
 		break;
 
 	case THER_PS_SET_HIGH_WARN_TEMP:
-		memcpy(&ti->high_temp, data, sizeof(ti->high_temp));
-		print(LOG_DBG, MODULE "set high temp: %d\n", *(unsigned short *)data);
+		memcpy(&high_temp_threshold, data, sizeof(high_temp_threshold));
+
+		if (storage_write_high_temp_threshold(high_temp_threshold)) {
+			print(LOG_DBG, MODULE "set high temp: %d\n", high_temp_threshold);
+			ti->high_temp_threshold = high_temp_threshold;
+			ti->next_warning_threshold = ti->high_temp_threshold;
+		} else {
+			print(LOG_DBG, MODULE "set high temp: %d failed\n", high_temp_threshold);
+		}
+
 		break;
 
 	case THER_PS_GET_TIME:
@@ -294,6 +333,8 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 		osal_setClock(osal_ConvertUTCSecs(&utc));
 		print(LOG_DBG, MODULE "set time: %d-%02d-%02d %02d:%02d:%02d\n",
 				utc.year, utc.month, utc.day, utc.hour, utc.minutes, utc.seconds);
+
+		ti->start_sec = osal_ConvertUTCSecs(&utc);
 		break;
 
 	case THER_PS_GET_DEBUG:
@@ -433,10 +474,22 @@ static void ther_device_init(struct ther_info *ti)
 
 	/* temp init */
 	ther_temp_init();
-/*
-	read high temp thershold
-	??
-*/
+
+	/* read high temp thershold */
+	if (!storage_read_high_temp_enabled(&ti->warning_enabled)) {
+		print(LOG_INFO, MODULE "read high temp enalbe failed, set enabled\n");
+
+		ti->warning_enabled = TRUE;
+		storage_write_high_temp_enabled(ti->warning_enabled);
+	}
+	if (!storage_read_high_temp_threshold(&ti->high_temp_threshold)) {
+		ti->high_temp_threshold = DEFAULT_HIGH_TEMP_THRESHOLD;
+
+		print(LOG_INFO, MODULE "read high temp threshold failed, set as %d\n", ti->high_temp_threshold);
+		storage_write_high_temp_threshold(ti->high_temp_threshold);
+	}
+	ti->next_warning_threshold = ti->high_temp_threshold;
+
 	/* ble init */
 	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event);
 
@@ -490,6 +543,11 @@ static void ther_system_power_on(struct ther_info *ti)
 	 */
 	osal_start_timerEx( ti->task_id, TH_BATT_EVT, 2000);
 
+	/*
+	 * auto power off
+	 */
+	osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
+
 	/* test */
 //	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
 }
@@ -508,6 +566,11 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	 * stop temp measurement
 	 */
 	osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
+
+	/*
+	 * stop auto power off
+	 */
+	osal_stop_timerEx(ti->task_id, TH_AUTO_POWER_OFF_EVT);
 
 	/*
 	 * play power off music
@@ -583,6 +646,29 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		return (events ^ TH_POWER_OFF_EVT);
 	}
 
+	if (events & TH_AUTO_POWER_OFF_EVT) {
+		if (!ti->ble_connect &&
+			((ti->previous_temp >= ti->temp_current && ti->previous_temp - ti->temp_current < 50) ||
+			(ti->previous_temp < ti->temp_current && ti->temp_current - ti->previous_temp < 50))) {
+
+			ti->same_temp_number++;
+		} else {
+			ti->same_temp_number = 0;
+			ti->previous_temp = ti->temp_current;
+		}
+
+		print(LOG_DBG, MODULE "auto power off: same_temp_number %d\n", ti->same_temp_number);
+
+		if (ti->same_temp_number >= AUTO_POWER_OFF_NUMBER_THRESHOLD) {
+			print(LOG_DBG, MODULE "auto power off\n");
+			ther_system_power_off_pre(ti);
+		} else {
+			osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
+		}
+
+		return (events ^ TH_AUTO_POWER_OFF_EVT);
+	}
+
 	/* batt measure */
 	if (events & TH_BATT_EVT) {
 		if (ti->mode == NORMAL_MODE) {
@@ -591,10 +677,26 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			oled_update_picture(OLED_CONTENT_BATT, ti->batt_percentage);
 			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
 
+			if (!ti->batt_warning_on && ti->batt_percentage < 10) {
+				ti->batt_warning_on = TRUE;
+				osal_start_timerEx( ti->task_id, TH_LOW_BATT_WARNING_EVT, LOW_BATT_WARNING_INTERVAL);
+			}
+
 			osal_start_timerEx( ti->task_id, TH_BATT_EVT, BATT_MEASURE_INTERVAL);
 		}
 
 		return (events ^ TH_BATT_EVT);
+	}
+
+	if (events & TH_LOW_BATT_WARNING_EVT) {
+		ther_buzzer_start_music(BUZZER_MUSIC_LOW_BATT_WARNING);
+
+		if (ti->batt_percentage < LOW_BATT_WARNING_THRESHOLD)
+			osal_start_timerEx( ti->task_id, TH_LOW_BATT_WARNING_EVT, LOW_BATT_WARNING_INTERVAL);
+		else
+			ti->batt_warning_on = FALSE;
+
+		return (events ^ TH_LOW_BATT_WARNING_EVT);
 	}
 
 	/* temp measure event */
@@ -623,12 +725,26 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 				oled_update_picture(OLED_CONTENT_MAX_TEMP, ti->temp_max);
 			}
 
+			/* high temp warning */
+			if (ti->warning_enabled && !ti->temp_warning_on && ti->temp_current >= ti->next_warning_threshold) {
+				ti->temp_warning_on = TRUE;
+				osal_start_timerEx( ti->task_id, TH_HIGH_TEMP_WARNING_EVT, HIGH_TEMP_WARNING_INTERVAL);
+			}
+			if (ti->temp_warning_on && ti->temp_current < ti->next_warning_threshold) {
+				ti->next_warning_threshold -= 50; /* 0.5 C */
+				if (ti->next_warning_threshold < ti->high_temp_threshold)
+					ti->next_warning_threshold = ti->high_temp_threshold;
+
+				ti->temp_warning_on = FALSE;
+				osal_stop_timerEx(ti->task_id, TH_HIGH_TEMP_WARNING_EVT);
+			}
+
 			if (ti->ble_connect) {
 				if (ti->temp_notification_enable) {
 //					ther_send_temp_notify(ti->temp_current);
 				}
 				if (ti->temp_indication_enable) {
-					ther_send_temp_indicate(ti->task_id, ti->temp_current);
+					ther_send_temp_indicate(ti->task_id, ti->temp_current / 10);  // ???
 				}
 			} else {
 				ther_save_temp_to_local(ti->temp_current);
@@ -647,6 +763,13 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		}
 
 		return (events ^ TH_TEMP_MEASURE_EVT);
+	}
+
+	if (events & TH_HIGH_TEMP_WARNING_EVT) {
+		ther_buzzer_start_music(BUZZER_MUSIC_HIGH_TEMP_WARNING);
+		osal_start_timerEx( ti->task_id, TH_HIGH_TEMP_WARNING_EVT, HIGH_TEMP_WARNING_INTERVAL);
+
+		return (events ^ TH_HIGH_TEMP_WARNING_EVT);
 	}
 
 	if (events & TH_HIS_TEMP_RESTORE_EVT) {
