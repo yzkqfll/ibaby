@@ -207,8 +207,8 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 		} else if (ti->power_mode == PM_3) {
 			print(LOG_DBG, MODULE "power up in long press button\n");
-/*			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
-			ti->power_mode = PM_ACTIVE;*/
+			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
+			ti->power_mode = PM_ACTIVE;
 
 			start_watchdog_timer(10);
 		}

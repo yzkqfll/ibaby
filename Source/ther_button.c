@@ -28,7 +28,7 @@
 
 #define BUTTON_MEASURE_INTERVAL 20
 
-#define SHORT_PRESS_TIME 30
+#define SHORT_PRESS_TIME 10
 #define LONG_PRESS_TIME 1200
 
 struct ther_button {

@@ -119,14 +119,51 @@ void ther_temp_power_off(void)
 	disable_ldo();
 }
 
+#define SAMPLING_NUM 3
+
+static unsigned short get_ave_val(unsigned short val[], uint8 num)
+{
+	unsigned char i, j;
+	unsigned char max_index;
+	unsigned short tmp, sum = 0;
+
+//	print(LOG_DBG, "%d, %d, %d, %d, %d\n", val[0], val[1], val[2], val[3], val[4]);
+	for (i = 0; i < num; i++) {
+		max_index = i;
+		for (j = i + 1; j < num; j++) {
+			if (val[max_index] < val[j]) {
+				max_index = j;
+			}
+		}
+		tmp = val[i];
+		val[i] = val[max_index];
+		val[max_index] = tmp;
+	}
+//	print(LOG_DBG, "%d, %d, %d, %d, %d\n", val[0], val[1], val[2], val[3], val[4]);
+
+	for (i = 1; i < num - 1; i++) {
+		sum += val[i];
+	}
+	return sum / (num - 2);
+}
+
 unsigned short ther_get_hw_adc(unsigned char ch)
 {
-	unsigned short adc = 0;
+	unsigned short ave_adc;
 
-	if (ch <= HAL_ADC_CHANNEL_7)
-		adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+	if (ch <= HAL_ADC_CHANNEL_7) {
+		uint8 i;
+		unsigned short adc[SAMPLING_NUM] = {0};
 
-	return adc;
+		for (i = 0; i < SAMPLING_NUM; i++)
+			adc[i] = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+
+		ave_adc = get_ave_val(adc, SAMPLING_NUM);
+
+//		ave_adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+	}
+
+	return ave_adc;
 }
 
 static uint16 ther_adjust_adc1(uint16 adc1)
@@ -238,7 +275,7 @@ static float ther_get_ch_temp_print(unsigned char ch)
 	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
 #ifdef PRE_RELEASE
-	temp -= 1;
+//	temp -= 1;
 #endif
 
 	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
@@ -255,7 +292,7 @@ float ther_get_temp(void)
 	struct ther_temp *t = &ther_temp;
 	float temp;
 
-//	t->channel = HAL_ADC_CHANNEL_1;
+//	t->channel = HAL_ADC_CHANNEL_0;
 	temp = ther_get_ch_temp_print(t->channel);
 
 	if (t->channel == HAL_ADC_CHANNEL_1) {
@@ -263,7 +300,7 @@ float ther_get_temp(void)
 			t->channel = HAL_ADC_CHANNEL_0;
 
 	} else if (t->channel == HAL_ADC_CHANNEL_0) {
-		if (temp < CH0_TEMP_MIN - TEMP_MARGIN || temp > CH0_TEMP_MAX + TEMP_MARGIN)
+		if (temp < CH0_TEMP_MIN || temp > CH0_TEMP_MAX)
 			t->channel = HAL_ADC_CHANNEL_1;
 	}
 
