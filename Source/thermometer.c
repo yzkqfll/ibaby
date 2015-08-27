@@ -75,14 +75,14 @@ struct ther_info ther_info;
  */
 #define DISPLAY_TIME SEC_TO_MS(5)
 #define DISPLAY_WELCOME_TIME SEC_TO_MS(2)
-#define DISPLAY_GOODBYE_TIME SEC_TO_MS(2)
+#define DISPLAY_GOODBYE_TIME SEC_TO_MS(1.5)
 
 
 /*
  * Power on/off
  */
 #define SYSTEM_POWER_ON_DELAY 100 /* ms */
-#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(3)
+#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(2)
 
 #define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600)
 #define AUTO_POWER_OFF_NUMBER_THRESHOLD 6
@@ -119,6 +119,7 @@ static void ther_device_exit_post(struct ther_info *ti);
 static void ther_system_power_on(struct ther_info *ti);
 static void ther_system_power_off_pre(struct ther_info *ti);
 static void ther_system_power_off_post(struct ther_info *ti);
+static void ther_enter_pm3(struct ther_info *ti);
 
 struct ther_info *get_ti(void)
 {
@@ -172,8 +173,6 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 	switch (msg->type) {
 	case SHORT_PRESS:
-		print(LOG_DBG, MODULE "button pressed\n");
-
 		if (ti->power_mode == PM_ACTIVE) {
 			struct display_param param;
 
@@ -191,8 +190,8 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 			}
 
 		} else if (ti->power_mode == PM_3) {
-			print(LOG_DBG, MODULE "ignore short press, power down !!!\n");
-			ther_system_power_off_post(ti);
+			print(LOG_DBG, MODULE "ignore short press, enter PM3 again\n");
+			ther_enter_pm3(ti);
 		} else {
 			print(LOG_DBG, MODULE "unknown power mode\n");
 		}
@@ -200,13 +199,14 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 		break;
 
 	case LONG_PRESS:
-		print(LOG_DBG, MODULE "button long pressed\n");
 
 		if (ti->power_mode == PM_ACTIVE) {
+			print(LOG_DBG, MODULE "power down system\n");
 			ther_system_power_off_pre(ti);
 
 		} else if (ti->power_mode == PM_3) {
-			print(LOG_DBG, MODULE "power up in long press button\n");
+
+			print(LOG_DBG, MODULE "power up system\n");
 			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
 			ti->power_mode = PM_ACTIVE;
 
@@ -536,6 +536,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	 */
 	ti->temp_measure_interval = TEMP_MEASURE_INTERVAL;
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
+	ti->temp_max = -8000; /* -80 C */
 	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
 
 	/*
@@ -588,6 +589,14 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	ther_device_exit_pre(ti);
 }
 
+static void ther_enter_pm3(struct ther_info *ti)
+{
+	ti->power_mode = PM_3;
+	/* go to PM3 */
+    SLEEPCMD |= BV(0) | BV(1);
+    PCON |=BV(0);
+}
+
 static void ther_system_power_off_post(struct ther_info *ti)
 {
 	ther_device_exit_post(ti);
@@ -598,10 +607,7 @@ static void ther_system_power_off_post(struct ther_info *ti)
 	 */
 //	osal_stop_timerEx(ti->task_id, TH_WATCHDOG_EVT);
 
-	ti->power_mode = PM_3;
-	/* go to PM3 */
-    SLEEPCMD |= BV(0) | BV(1);
-    PCON |=BV(0);
+	ther_enter_pm3(ti);
 }
 
 /*********************************************************************
@@ -717,11 +723,12 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = (uint16)(ther_get_temp() * 100 + 0.5);
+			ti->temp_current = (int16)(ther_get_temp() * 100 + 0.5);
 			ther_temp_power_off();
 
 			if (ti->temp_max < ti->temp_current) {
 				ti->temp_max = ti->temp_current;
+				print(LOG_DBG, MODULE "update max temp to %d\n", ti->temp_max);
 				oled_update_picture(OLED_CONTENT_MAX_TEMP, ti->temp_max);
 			}
 
@@ -744,7 +751,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 //					ther_send_temp_notify(ti->temp_current);
 				}
 				if (ti->temp_indication_enable) {
-					ther_send_temp_indicate(ti->task_id, ti->temp_current / 10);  // ???
+					ther_send_temp_indicate(ti->task_id, ti->temp_current);
 				}
 			} else {
 				ther_save_temp_to_local(ti->temp_current);

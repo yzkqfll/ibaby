@@ -448,20 +448,32 @@ static uint8 at_stest(char *ret_buf)
 static uint8 at_test(char *ret_buf)
 {
 	struct ther_info *ti = get_ti();
-	bool ret;
+	bool ret = TRUE;
 
-//	ther_read_zero_cal_info(&delta);
-//	print(LOG_INFO, MODULE "ADC0 delta %d\n", delta);
+	{
+		int16 temp = -38.46 * 100;
+		uint8 first_num, sec_num, third_num, forth_num;
 
-	while (1);
+		first_num = temp / 1000;
+		sec_num = (temp / 100) % 10;
+		third_num = (temp / 10) % 10;
+		forth_num = temp % 10;
 
-	ret = storage_test();
+		print(LOG_DBG, "%d, %d, %d, %d\n", first_num, sec_num, third_num, forth_num);
+
+		temp = -temp;
+		first_num = temp / 1000;
+		sec_num = (temp / 100) % 10;
+		third_num = (temp / 10) % 10;
+		forth_num = temp % 10;
+
+		print(LOG_DBG, "%d, %d, %d, %d\n", first_num, sec_num, third_num, forth_num);
+	}
 
 	if (ret)
 		return sprintf((char *)ret_buf, "OK\n");
 	else
 		return sprintf((char *)ret_buf, "ERROR\n");
-//	while (1);
 }
 
 static void at_help(void)

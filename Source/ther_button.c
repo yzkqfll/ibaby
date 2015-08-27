@@ -29,7 +29,7 @@
 #define BUTTON_MEASURE_INTERVAL 20
 
 #define SHORT_PRESS_TIME 10
-#define LONG_PRESS_TIME 1200
+#define LONG_PRESS_TIME 900
 
 struct ther_button {
 	unsigned char task_id;

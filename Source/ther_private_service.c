@@ -27,7 +27,7 @@
 #include "gapbondmgr.h"
 
 #include "ther_uart.h"
-
+#include "config.h"
 #include "thermometer.h"
 #include "ther_private_service.h"
 
@@ -121,6 +121,7 @@ static uint8 ther_ps_debug_props = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 ther_ps_debug_user_desp[] = "debug";
 
 static gattAttribute_t ther_ps_attr_table[] = {
+#ifdef PRE_RELEASE
 	{
 		{ATT_BT_UUID_SIZE, primaryServiceUUID},	/* type */
 		GATT_PERMIT_READ,						/* permissions */
@@ -244,7 +245,7 @@ static gattAttribute_t ther_ps_attr_table[] = {
 				0,
 				ther_ps_time_user_desp
 			},
-
+#endif
 		/*
 		 * Declaration: debug
 		 */

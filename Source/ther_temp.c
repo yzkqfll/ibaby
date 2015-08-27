@@ -31,9 +31,12 @@
 
 #define MODULE "[TEMP   ] "
 
-#define TEMP_MARGIN 1.0 /* 2 celsius */
+/*
+ * CH0 26.88~46.6
+ */
+#define TEMP_MARGIN 2.0 /* 2 celsius */
 #define CH0_TEMP_MIN 29.0
-#define CH0_TEMP_MAX 45.0
+#define CH0_TEMP_MAX 44.0
 
 struct ther_temp {
 	unsigned char channel;
@@ -119,7 +122,7 @@ void ther_temp_power_off(void)
 	disable_ldo();
 }
 
-#define SAMPLING_NUM 3
+#define SAMPLING_NUM 1
 
 static unsigned short get_ave_val(unsigned short val[], uint8 num)
 {
@@ -127,7 +130,13 @@ static unsigned short get_ave_val(unsigned short val[], uint8 num)
 	unsigned char max_index;
 	unsigned short tmp, sum = 0;
 
-//	print(LOG_DBG, "%d, %d, %d, %d, %d\n", val[0], val[1], val[2], val[3], val[4]);
+	for (i = 0; i < num; i++) {
+//		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
+	}
+
+	if (num < 3)
+		return val[num / 2];
+
 	for (i = 0; i < num; i++) {
 		max_index = i;
 		for (j = i + 1; j < num; j++) {
@@ -139,7 +148,6 @@ static unsigned short get_ave_val(unsigned short val[], uint8 num)
 		val[i] = val[max_index];
 		val[max_index] = tmp;
 	}
-//	print(LOG_DBG, "%d, %d, %d, %d, %d\n", val[0], val[1], val[2], val[3], val[4]);
 
 	for (i = 1; i < num - 1; i++) {
 		sum += val[i];
@@ -159,8 +167,6 @@ unsigned short ther_get_hw_adc(unsigned char ch)
 			adc[i] = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
 
 		ave_adc = get_ave_val(adc, SAMPLING_NUM);
-
-//		ave_adc = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
 	}
 
 	return ave_adc;
@@ -168,13 +174,10 @@ unsigned short ther_get_hw_adc(unsigned char ch)
 
 static uint16 ther_adjust_adc1(uint16 adc1)
 {
-/*
-	float C16 = 22;
-	float CADC = 0.775;
-	adc1 * (C16 + CADC) / C16
-*/
+/*	uint16 new_adc1 = adc1 * 1.01;
 
-	return adc1 * 1.01;
+	print(LOG_DBG, "adc1 %d, new adc1 %d\n", adc1, new_adc1);*/
+	return (uint16)(adc1 * 1.01);
 }
 
 unsigned short ther_get_adc(unsigned char ch)
@@ -274,25 +277,17 @@ static float ther_get_ch_temp_print(unsigned char ch)
 	/* Rt -> temp */
 	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
-#ifdef PRE_RELEASE
-//	temp -= 1;
-#endif
-
 	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
 			ch, adc, Rt, temp);
 
 	return temp;
 }
 
-/*
- *
- */
 float ther_get_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
 	float temp;
 
-//	t->channel = HAL_ADC_CHANNEL_0;
 	temp = ther_get_ch_temp_print(t->channel);
 
 	if (t->channel == HAL_ADC_CHANNEL_1) {

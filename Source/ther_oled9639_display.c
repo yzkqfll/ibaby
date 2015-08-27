@@ -70,8 +70,8 @@ struct oled_display {
 
 	/* first picture param */
 	bool bt_link;
-	unsigned short temp;
-	uint16 max_temp;
+	int16 temp;
+	int16 max_temp;
 	unsigned short time;
 	unsigned char batt_percentage;
 
@@ -107,43 +107,47 @@ static struct oled_display display;
 #define BATT_END_COL 94
 
 /* Temp */
-#define TEMP_1_START_COL 10
-#define TEMP_1_END_COL 23
-#define TEMP_2_START_COL 23
-#define TEMP_2_END_COL 36
+#define TEMP_NEGATIVE_START_COL 2
+#define TEMP_NEGATIVE_END_COL 14
 
-#define TEMP_DOT_START_COL 37
-#define TEMP_DOT_END_COL 45
+#define TEMP_1_START_COL 15
+#define TEMP_1_END_COL 28
+#define TEMP_2_START_COL 28
+#define TEMP_2_END_COL 41
 
-#define TEMP_3_START_COL 46
-#define TEMP_3_END_COL 59
+#define TEMP_DOT_START_COL 42
+#define TEMP_DOT_END_COL 50
+
+#define TEMP_3_START_COL 51
+#define TEMP_3_END_COL 64
 /*
-#define TEMP_4_START_COL 59
-#define TEMP_4_END_COL 72
+#define TEMP_4_START_COL 64
+#define TEMP_4_END_COL 77
 */
 
-#define TEMP_CELSIUS_START_COL 62
-#define TEMP_CELSIUS_END_COL 82
+#define TEMP_CELSIUS_START_COL 67
+#define TEMP_CELSIUS_END_COL 87
 
 /* MAX text */
-#define MAX_TEXT_START_COL 1
-#define MAX_TEXT_END_COL 39
+#define MAX_TEXT_START_COL 0
+#define MAX_TEXT_END_COL 38
 
-/* MAX text colon */
-#define MAX_TEXT_COLON_START_COL 39
-#define MAX_TEXT_COLON_END_COL 45
+/* MAX text negative */
+
+#define MAX_TEMP_NEGATIVE_START_COL 38
+#define MAX_TEMP_NEGATIVE_END_COL 50
 
 /* MAX Temp */
-#define MAX_TEMP_1_START_COL 46
-#define MAX_TEMP_1_END_COL 59
-#define MAX_TEMP_2_START_COL 59
-#define MAX_TEMP_2_END_COL 72
+#define MAX_TEMP_1_START_COL 50
+#define MAX_TEMP_1_END_COL 63
+#define MAX_TEMP_2_START_COL 63
+#define MAX_TEMP_2_END_COL 76
 
-#define MAX_TEMP_DOT_START_COL 72
-#define MAX_TEMP_DOT_END_COL 80
+#define MAX_TEMP_DOT_START_COL 76
+#define MAX_TEMP_DOT_END_COL 84
 
-#define MAX_TEMP_3_START_COL 80
-#define MAX_TEMP_3_END_COL 93
+#define MAX_TEMP_3_START_COL 84
+#define MAX_TEMP_3_END_COL 97
 
 /*
 #define MAX_TEMP_4_START_COL x
@@ -188,6 +192,9 @@ static const unsigned char bluetooth_16_10[][20] = {
 	0x00, 0x00, 0x10, 0x20, 0xFC, 0x88, 0x50, 0x20, 0x00, 0x00, 0x00, 0x00, 0x08, 0x04, 0x3F, 0x11, 0x0A, 0x04, 0x00, 0x00
 };
 
+static const unsigned char negative_24x12[][36] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
 
 static const unsigned char dot_24x8[][24] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x0F, 0x0F, 0x06, 0x00, 0x00
@@ -306,18 +313,29 @@ static void show_time(bool show, unsigned short time)
 /*
  * 2771 => 27.71 celsius
  */
-static void show_temp(bool show, uint16 temp)
+static void show_temp(bool show, int16 temp)
 {
-	uint8 first_num, sec_num, third_num, forth_num;
+	uint8 first_num, sec_num, third_num;
+	bool negative = FALSE;
 
-	temp += 5; /* 4 she 5 ru*/
+	if (temp >= 0) {
+		temp += 5; /* 4 she 5 ru*/
+	} else {
+		negative = TRUE;
+		temp -= 5;
+		temp = -temp;
+	}
 
 	first_num = temp / 1000;
 	sec_num = (temp / 100) % 10;
 	third_num = (temp / 10) % 10;
-	forth_num = temp % 10;
+//	forth_num = temp % 10;
 
 	if (show) {
+		if (negative) {
+			oled_drv_write_block(2, 5, TEMP_NEGATIVE_START_COL, TEMP_NEGATIVE_END_COL, negative_24x12[0]);
+		}
+
 		oled_drv_write_block(2, 5, TEMP_1_START_COL, TEMP_1_END_COL, number_24x13[first_num % 10]);
 		oled_drv_write_block(2, 5, TEMP_2_START_COL, TEMP_2_END_COL, number_24x13[sec_num]);
 
@@ -327,7 +345,7 @@ static void show_temp(bool show, uint16 temp)
 
 		oled_drv_write_block(2, 5, TEMP_CELSIUS_START_COL, TEMP_CELSIUS_END_COL, celsius_24x20[0]);
 	} else {
-		oled_drv_fill_block(2, 5, TEMP_1_START_COL, TEMP_CELSIUS_END_COL, 0);
+		oled_drv_fill_block(2, 5, TEMP_NEGATIVE_START_COL, TEMP_CELSIUS_END_COL, 0);
 	}
 }
 
@@ -393,7 +411,7 @@ static void show_max_text(bool show)
 	if (show) {
 		oled_drv_write_block(1, 4, MAX_TEXT_START_COL, MAX_TEXT_END_COL, max_text_24x38);
 	} else {
-		oled_drv_fill_block(1, 4, MAX_TEXT_START_COL, MAX_TEXT_COLON_END_COL, 0);
+		oled_drv_fill_block(1, 4, MAX_TEXT_START_COL, MAX_TEXT_END_COL, 0);
 	}
 }
 
@@ -401,18 +419,29 @@ static void show_max_text(bool show)
 /*
  * 2770 => 27.70 celsius
  */
-static void show_max_temp(bool show, uint16 temp)
+static void show_max_temp(bool show, int16 temp)
 {
-	uint8 first_num, sec_num, third_num, forth_num;
+	uint8 first_num, sec_num, third_num;
+	bool negative = FALSE;
 
-	temp += 5; /* 4 she 5 ru*/
+	if (temp >= 0) {
+		temp += 5; /* 4 she 5 ru*/
+	} else {
+		negative = TRUE;
+		temp -= 5;
+		temp = -temp;
+	}
 
 	first_num = temp / 1000;
 	sec_num = (temp / 100) % 10;
 	third_num = (temp / 10) % 10;
-	forth_num = temp % 10;
+//	forth_num = temp % 10;
 
 	if (show) {
+		if (negative) {
+			oled_drv_write_block(1, 4, MAX_TEMP_NEGATIVE_START_COL, MAX_TEMP_NEGATIVE_END_COL, negative_24x12[0]);
+		}
+
 		oled_drv_write_block(1, 4, MAX_TEMP_1_START_COL, MAX_TEMP_1_END_COL, number_24x13[first_num % 10]);
 		oled_drv_write_block(1, 4, MAX_TEMP_2_START_COL, MAX_TEMP_2_END_COL, number_24x13[sec_num]);
 
@@ -502,14 +531,14 @@ void oled_update_picture(uint8 type, uint16 val)
 		break;
 
 	case OLED_CONTENT_TEMP:
-		od->temp = val;
+		od->temp = (int16)val;
 		if (od->picture == OLED_PICTURE1) {
 			show_temp(TRUE, od->temp);
 		}
 		break;
 
 	case OLED_CONTENT_MAX_TEMP:
-		od->max_temp = val;
+		od->max_temp = (int16)val;
 		if (od->picture == OLED_PICTURE2) {
 			show_max_temp(TRUE, od->max_temp);
 		}

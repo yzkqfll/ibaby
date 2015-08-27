@@ -109,9 +109,9 @@ struct ther_info {
 
 	/* temp */
 	unsigned char temp_measure_stage;
-	unsigned short temp_last_saved;
-	unsigned short temp_current; /* every TEMP_MEASURE_INTERVAL */
-	uint16 temp_max;
+	int16 temp_last_saved;
+	int16 temp_current; /* every TEMP_MEASURE_INTERVAL */
+	int16 temp_max;
 	unsigned long temp_measure_interval;
 
 	bool his_temp_uploading;
@@ -126,11 +126,11 @@ struct ther_info {
 	/* private service */
 	uint8 warning_enabled;
 	bool temp_warning_on;
-	uint16 high_temp_threshold; /* high warning temp */
-	uint16 next_warning_threshold;
+	int16 high_temp_threshold; /* high warning temp */
+	int16 next_warning_threshold;
 
 	/* auto power off */
-	uint16 previous_temp;
+	int16 previous_temp;
 	uint8 same_temp_number;
 };
 extern struct ther_info ther_info;

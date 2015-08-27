@@ -69,7 +69,7 @@ struct sys_info {
 struct config_info {
 	uint16 magic;
 	uint8 warning_enabled;
-	uint16 high_temp_threshold;
+	int16 high_temp_threshold;
 	uint8 crc;
 };
 
@@ -1158,7 +1158,7 @@ out:
 	return ret;
 }
 
-bool storage_write_high_temp_threshold(uint16 high_temp_threshold)
+bool storage_write_high_temp_threshold(int16 high_temp_threshold)
 {
 	struct mtd_info*m = get_mtd();
 	int8 ret = FALSE;
@@ -1199,7 +1199,7 @@ out:
 	return ret;
 }
 
-bool storage_read_high_temp_threshold(uint16 *high_temp_threshold)
+bool storage_read_high_temp_threshold(int16 *high_temp_threshold)
 {
 	struct mtd_info*m = get_mtd();
 	int8 ret = FALSE;
