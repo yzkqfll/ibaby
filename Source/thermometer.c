@@ -36,8 +36,6 @@
 #include "OSAL_Clock.h"
 
 #include "config.h"
-
-#include "config.h"
 #include "ther_uart.h"
 #include "ther_uart_drv.h"
 
@@ -374,6 +372,8 @@ static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_statu
 		ti->ble_connect = FALSE;
 		oled_update_picture(OLED_CONTENT_LINK, FALSE);
 	} else if (msg->type == BLE_CONNECT) {
+		ti->same_temp_number = 0;
+
 		ti->ble_connect = TRUE;
 		oled_update_picture(OLED_CONTENT_LINK, TRUE);
 
@@ -667,7 +667,9 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 		if (ti->same_temp_number >= AUTO_POWER_OFF_NUMBER_THRESHOLD) {
 			print(LOG_DBG, MODULE "auto power off\n");
+#ifndef PRE_RELEASE
 			ther_system_power_off_pre(ti);
+#endif
 		} else {
 			osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
 		}
