@@ -68,7 +68,8 @@ extern "C"
 #define TH_HIGH_TEMP_WARNING_EVT	0x0200
 #define TH_LOW_BATT_WARNING_EVT		0x0400
 #define TH_AUTO_POWER_OFF_EVT		0x0800
-#define TH_TEST_EVT					0x1000
+#define TH_LOW_BATT_BLINK_EVT		0x1000
+#define TH_TEST_EVT					0x2000
 
 enum {
 	NORMAL_MODE = 0,
@@ -122,6 +123,7 @@ struct ther_info {
 	/* batt */
 	unsigned char batt_percentage;
 	bool batt_warning_on;
+	bool batt_in_dispaly;
 
 	/* private service */
 	uint8 warning_enabled;

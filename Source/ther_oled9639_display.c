@@ -501,7 +501,7 @@ static void oled_display_draw_picture(struct oled_display *od)
 	oled_drv_display_on();
 }
 
-void oled_update_picture(uint8 type, uint16 val)
+void oled_update_picture(uint8 type, bool show, uint16 val)
 {
 	struct oled_display *od = &display;
 
@@ -511,36 +511,60 @@ void oled_update_picture(uint8 type, uint16 val)
 
 	switch (type) {
 	case OLED_CONTENT_TIME:
-		od->time = val;
-		if (od->picture == OLED_PICTURE1)
-			show_time(TRUE, od->time);
+		if (od->picture == OLED_PICTURE1) {
+			if (show) {
+				od->time = val;
+				show_time(TRUE, od->time);
+			} else {
+				show_time(FALSE, 0);
+			}
+
+		}
 		break;
 
 	case OLED_CONTENT_LINK:
-		od->bt_link = val;
 		if (od->picture == OLED_PICTURE1) {
-			show_bt_link(od->bt_link);
+			if (show) {
+				od->bt_link = val;
+				show_bt_link(od->bt_link);
+			} else {
+				show_bt_link(FALSE);
+			}
 		}
 		break;
 
 	case OLED_CONTENT_BATT:
-		od->batt_percentage = val;
+
 		if (od->picture == OLED_PICTURE1) {
-			show_batt(TRUE, od->batt_percentage);
+			if (show) {
+				od->batt_percentage = val;
+				show_batt(TRUE, od->batt_percentage);
+			} else {
+				show_batt(FALSE, 0);
+			}
 		}
 		break;
 
 	case OLED_CONTENT_TEMP:
-		od->temp = (int16)val;
 		if (od->picture == OLED_PICTURE1) {
-			show_temp(TRUE, od->temp);
+			if (show) {
+				od->temp = (int16)val;
+				show_temp(TRUE, od->temp);
+			} else {
+				show_temp(FALSE, 0);
+			}
+
 		}
 		break;
 
 	case OLED_CONTENT_MAX_TEMP:
-		od->max_temp = (int16)val;
 		if (od->picture == OLED_PICTURE2) {
-			show_max_temp(TRUE, od->max_temp);
+			if (show) {
+				od->max_temp = (int16)val;
+				show_max_temp(TRUE, od->max_temp);
+			} else {
+				show_max_temp(FALSE, 0);
+			}
 		}
 		break;
 

@@ -96,7 +96,7 @@ struct ther_info ther_info;
 #define HIS_TEMP_RESTORE_WAIT_ENABLE SEC_TO_MS(5)
 #define HIS_TEMP_UPLOADING_INTERVAL 100
 
-#define HIGH_TEMP_WARNING_INTERVAL SEC_TO_MS(5)
+#define HIGH_TEMP_WARNING_INTERVAL SEC_TO_MS(10)
 
 /*
  * Watchdog
@@ -110,7 +110,8 @@ struct ther_info ther_info;
 #define BATT_MEASURE_CONFILCT_DELAY 5000
 
 #define LOW_BATT_WARNING_THRESHOLD 10 /* 10% */
-#define LOW_BATT_WARNING_INTERVAL SEC_TO_MS(5)
+#define LOW_BATT_WARNING_INTERVAL SEC_TO_MS(20)
+#define LOW_BATT_BLINK_INTERVAL SEC_TO_MS(0.5)
 
 static void ther_device_exit_pre(struct ther_info *ti);
 static void ther_device_exit_post(struct ther_info *ti);
@@ -370,12 +371,12 @@ static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_statu
 		ti->temp_notification_enable = FALSE;
 
 		ti->ble_connect = FALSE;
-		oled_update_picture(OLED_CONTENT_LINK, FALSE);
+		oled_update_picture(OLED_CONTENT_LINK, TRUE, FALSE);
 	} else if (msg->type == BLE_CONNECT) {
 		ti->same_temp_number = 0;
 
 		ti->ble_connect = TRUE;
-		oled_update_picture(OLED_CONTENT_LINK, TRUE);
+		oled_update_picture(OLED_CONTENT_LINK, TRUE, TRUE);
 
 		if (!ti->his_temp_uploading) {
 			ti->his_temp_uploading = TRUE;
@@ -415,9 +416,20 @@ static void ther_display_event_report(unsigned char event, uint16 arg)
 		/* change temp measure to 1 sec */
 //		change_measure_timer(ti, TEMP_MEASURE_MIN_INTERVAL);
 		ti->display_picture = arg;
+
+		if (ti->display_picture == OLED_PICTURE1) {
+			if (ti->batt_percentage < LOW_BATT_WARNING_THRESHOLD) {
+				ti->batt_in_dispaly = TRUE;
+#ifndef PRE_RELEASE
+				osal_start_timerEx(ti->task_id, TH_LOW_BATT_BLINK_EVT, LOW_BATT_BLINK_INTERVAL);
+#endif
+			}
+		}
 		break;
 
 	case OLED_EVENT_TIME_TO_END:
+		osal_stop_timerEx(ti->task_id, TH_LOW_BATT_BLINK_EVT);
+
 //		change_measure_timer(ti, TEMP_MEASURE_INTERVAL);
 		if (ti->display_picture == OLED_PICTURE_WELCOME) {
 			struct display_param param;
@@ -682,7 +694,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		if (ti->mode == NORMAL_MODE) {
 			Batt_MeasLevel();
 			ti->batt_percentage = ther_batt_get_percentage(FALSE);
-			oled_update_picture(OLED_CONTENT_BATT, ti->batt_percentage);
+			oled_update_picture(OLED_CONTENT_BATT, TRUE, ti->batt_percentage);
 			print(LOG_DBG, MODULE "batt %d%%\n", ti->batt_percentage);
 
 			if (!ti->batt_warning_on && ti->batt_percentage < 10) {
@@ -694,6 +706,21 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		}
 
 		return (events ^ TH_BATT_EVT);
+	}
+
+	if (events & TH_LOW_BATT_BLINK_EVT) {
+		if (ti->batt_in_dispaly) {
+			oled_update_picture(OLED_CONTENT_BATT, FALSE, 0);
+			ti->batt_in_dispaly = FALSE;
+		} else {
+			oled_update_picture(OLED_CONTENT_BATT, TRUE, ti->batt_percentage);
+			ti->batt_in_dispaly = TRUE;
+		}
+
+		if (ti->display_picture != OLED_PICTURE_NONE)
+			osal_start_timerEx(ti->task_id, TH_LOW_BATT_BLINK_EVT, LOW_BATT_BLINK_INTERVAL);
+
+		return (events ^ TH_LOW_BATT_BLINK_EVT);
 	}
 
 	if (events & TH_LOW_BATT_WARNING_EVT) {
@@ -731,7 +758,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			if (ti->temp_max < ti->temp_current) {
 				ti->temp_max = ti->temp_current;
 				print(LOG_DBG, MODULE "update max temp to %d\n", ti->temp_max);
-				oled_update_picture(OLED_CONTENT_MAX_TEMP, ti->temp_max);
+				oled_update_picture(OLED_CONTENT_MAX_TEMP, TRUE, ti->temp_max);
 			}
 
 			/* high temp warning */
@@ -760,7 +787,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			}
 
 			if (ti->temp_current != ti->temp_last_saved) {
-				oled_update_picture(OLED_CONTENT_TEMP, ti->temp_current);
+				oled_update_picture(OLED_CONTENT_TEMP, TRUE, ti->temp_current);
 			}
 
 			osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, ti->temp_measure_interval);
