@@ -310,9 +310,9 @@ void ther_temp_init(void)
 
 	t->channel = HAL_ADC_CHANNEL_1;
 
-	storage_read_zero_cal(&t->adc0_delta);
+/*	storage_read_zero_cal(&t->adc0_delta);
 	print(LOG_INFO, MODULE "ADC0 delta is %d\n", t->adc0_delta);
 
 	storage_read_temp_cal(&t->B_delta, &t->R25_delta);
-	print(LOG_INFO, MODULE "B_delta is %d, R25_delta is %d\n", t->B_delta, t->R25_delta);
+	print(LOG_INFO, MODULE "B_delta is %d, R25_delta is %d\n", t->B_delta, t->R25_delta);*/
 }

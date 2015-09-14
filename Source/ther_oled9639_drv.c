@@ -24,8 +24,6 @@
 
 #define MODULE "[OLED DRV] "
 
-#define OLED_IIC_ADDR 0x3C
-
 #define BUF_LEN 2
 
 #define TYPE_CMD 0x0
@@ -393,13 +391,11 @@ void oled_drv_power_off_vdd(void)
 void oled_drv_power_on_vcc(void)
 {
 //	set_vcc_power(VCC_POWER_ON);
-	power_on_boost();
 }
 
 void oled_drv_power_off_vcc(void)
 {
 //	set_vcc_power(VCC_POWER_OFF);
-	power_off_boost();
 }
 
 void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,
@@ -463,7 +459,6 @@ void oled_drv_charge_pump_enable(void)
 void oled_drv_charge_pump_disable(void)
 {
 	set_charge_pump(CHARGE_PUMP_DISABLE);
-
 }
 
 void oled_drv_set_contrast(unsigned char contrast)
@@ -473,18 +468,20 @@ void oled_drv_set_contrast(unsigned char contrast)
 	od->contrast = contrast;
 }
 
+/* When POWER_SAVING enabled, we need to init iic every wake up */
+void oled_open_iic(void)
+{
+	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
+}
+
+void oled_close_iic(void)
+{
+	HalI2CDisable();
+}
+
 void oled_drv_init_device(void)
 {
 	struct ther_oled9639_drv *od = &oled9639_drv;
-
-	/* CPU bug:
-	 *  - we need to disable ane re-init iic, otherwise it will be dead in
-	 *    I2C_STRT(), etc
-	 */
-//	HalI2CDisable();
-
-	/* When POWER_SAVING enabled, we need to init iic every wake up */
-	HalI2CInit(OLED_IIC_ADDR, i2cClock_533KHZ);
 
 	set_display_onoff(DISPLAY_OFF);
 
@@ -526,6 +523,6 @@ void oled_drv_init(void)
 
 void oled_drv_exit(void)
 {
-	HalI2CDisable();
+	oled_close_iic();
 }
 

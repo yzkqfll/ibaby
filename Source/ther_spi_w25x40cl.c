@@ -60,6 +60,7 @@
 #define CMD_ERASE_64K               (0xD8)  /* 64KB Block Erase */
 #define CMD_JEDEC_ID                (0x9F)  /* Read JEDEC ID */
 #define CMD_ERASE_CHIP              (0xC7)  /* Chip Erase */
+#define CMD_POWER_DOWN				(0xB9)  /* Power down */
 #define CMD_RELEASE_PWRDN           (0xAB)  /* Release device from power down state */
 
 #define DUMMY                       (0xFF)
@@ -175,11 +176,29 @@ static int8 w25x_chip_erase(void)
 	return MTD_OK;
 }
 
+static int8 w25x_power_down(void)
+{
+	uint8 cmd = CMD_POWER_DOWN;
+	ther_spi_send(&cmd, 1);
+
+	return MTD_OK;
+}
+
+static int8 w25x_release_power_down(void)
+{
+	uint8 cmd = CMD_RELEASE_PWRDN;
+	ther_spi_send(&cmd, 1);
+
+	return MTD_OK;
+}
+
 static int8 w25x_flash_open(void)
 {
 	uint8 send_buffer[2];
 
 //	power_on_boost();
+
+	w25x_release_power_down();
 
 	w25x_write_enable();
 
@@ -195,6 +214,8 @@ static int8 w25x_flash_open(void)
 static int8 w25x_flash_close(void)
 {
 //	power_off_boost();
+
+	w25x_power_down();
 
 	return MTD_OK;
 }
@@ -233,6 +254,8 @@ int8 ther_spi_w25x_init(struct mtd_info *m)
 	/* init spi */
 	ther_spi_init();
 
+	w25x_release_power_down();
+
 	/* read flash id */
 	cmd = CMD_JEDEC_ID;
 	ther_spi_send_then_recv(&cmd, 1, id_recv, 3);
@@ -267,6 +290,8 @@ int8 ther_spi_w25x_init(struct mtd_info *m)
 	m->read    = w25x_flash_read;
 	m->write   = w25x_flash_write;
 	m->erase   = w25x_flash_erase;
+
+	w25x_power_down();
 
 	return MTD_OK;
 }

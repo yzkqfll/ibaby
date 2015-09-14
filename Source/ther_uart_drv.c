@@ -84,9 +84,9 @@ int uart_drv_init(unsigned char port, unsigned char baud_rate,
 	/*
 	 * P0.4, P0.5: gpio output, low
 	 */
-	P0SEL &= ~0x30;
-	P0DIR |= 0x30;
-	P0 &= ~0x30;
+//	P0SEL &= ~0x30;
+//	P0DIR |= 0x30;
+//	P0 &= ~0x30;
 #endif
 
 	ud = &uart_drv[port];
@@ -131,7 +131,7 @@ int uart_drv_init(unsigned char port, unsigned char baud_rate,
 	 * ensure the uart0 is working fine
 	 */
 #if defined(POWER_SAVING)
-	U0UCR &= ~BV(6);
+//	U0UCR &= ~BV(6);
 #endif
 
 	return 0;

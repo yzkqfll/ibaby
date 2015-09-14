@@ -2,6 +2,7 @@
 #ifndef __THER_OLED9639_DRV_H__
 #define __THER_OLED9639_DRV_H__
 
+#define OLED_IIC_ADDR 0x3C
 
 #define MAX_COL 96
 #define MAX_ROW 39
@@ -10,6 +11,8 @@
 
 void oled_drv_init(void);
 void oled_drv_exit(void);
+void oled_open_iic(void);
+void oled_close_iic(void);
 void oled_drv_init_device(void);
 void oled_drv_fill_screen(unsigned char val);
 void oled_drv_write_block(unsigned char start_page, unsigned char end_page,

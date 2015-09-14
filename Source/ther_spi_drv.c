@@ -62,7 +62,7 @@ void ther_spi_init(void)
 
 //	THER_SPI_POWER(1);
 	THER_SPI_WP(0);
-	THER_SPI_EN(0);
+	THER_SPI_EN(1);
 }
 
 static uint32 ther_spi_xfer(struct ther_spi_message* message)

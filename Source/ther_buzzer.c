@@ -235,5 +235,7 @@ void ther_buzzer_exit(void)
 		if (b->cur_step % 2)
 			stop_buzzer();
 	}
+
+	P1_BUZZER_PIN = 1;
 }
 

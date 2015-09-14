@@ -26,8 +26,8 @@
 #define P2_OLED_VDDEN_BIT 0
 #define P2_DBG_DATA_BIT 1
 #define P2_DBG_CLK_BIT 2
-#define P2_LDO_EN_BIT 3
-#define P2_SPI_WP_BIT 4
+#define P2_XOSC_32K_Q2_BIT 3
+#define P2_XOSC_32K_Q1_BIT 4
 
 /*
  * Pin value
@@ -56,8 +56,6 @@
 #define P2_LDO_EN_PIN P2_3
 #define P2_SPI_WP_PIN P2_4
 
-void power_on_boost(void);
-void power_off_boost(void);
 void ther_port_init(void);
 void ther_port_exit(void);
 

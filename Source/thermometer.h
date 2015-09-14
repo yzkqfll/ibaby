@@ -80,6 +80,7 @@ struct ther_info {
 	uint8 task_id;
 
 	unsigned char power_mode;
+	bool powering_down;
 	uint8 lock_users;
 
 	bool ble_connect;

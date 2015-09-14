@@ -73,14 +73,14 @@ struct ther_info ther_info;
  */
 #define DISPLAY_TIME SEC_TO_MS(5)
 #define DISPLAY_WELCOME_TIME SEC_TO_MS(2)
-#define DISPLAY_GOODBYE_TIME SEC_TO_MS(1.5)
+#define DISPLAY_GOODBYE_TIME SEC_TO_MS(1)
 
 
 /*
  * Power on/off
  */
 #define SYSTEM_POWER_ON_DELAY 100 /* ms */
-#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(2)
+#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(3)
 
 #define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600)
 #define AUTO_POWER_OFF_NUMBER_THRESHOLD 6
@@ -168,6 +168,9 @@ static void ther_user_active(struct ther_info *ti)
 
 static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 {
+	if (ti->powering_down)
+		return;
+
 	ther_user_active(ti);
 
 	switch (msg->type) {
@@ -201,13 +204,14 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 		if (ti->power_mode == PM_ACTIVE) {
 			print(LOG_DBG, MODULE "power down system\n");
+			ti->powering_down = TRUE;
 			ther_system_power_off_pre(ti);
 
 		} else if (ti->power_mode == PM_3) {
 
 			print(LOG_DBG, MODULE "power up system\n");
-			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
-			ti->power_mode = PM_ACTIVE;
+//			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
+//			ti->power_mode = PM_ACTIVE;
 
 			start_watchdog_timer(10);
 		}
@@ -378,7 +382,7 @@ static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_statu
 		ti->ble_connect = TRUE;
 		oled_update_picture(OLED_CONTENT_LINK, TRUE, TRUE);
 
-		if (!ti->his_temp_uploading) {
+		if (0 && !ti->his_temp_uploading) {
 			ti->his_temp_uploading = TRUE;
 			storage_drain_temp();
 			osal_start_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT, HIS_TEMP_RESTORE_DELAY);
@@ -527,6 +531,10 @@ static void ther_device_exit_post(struct ther_info *ti)
 {
 	/* oled display exit */
 	oled_display_exit();
+
+	ther_buzzer_exit();
+
+	ther_port_exit();
 }
 
 static void ther_system_power_on(struct ther_info *ti)
@@ -574,11 +582,14 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	 * batt measure
 	 */
 	osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
+	osal_stop_timerEx(ti->task_id, TH_LOW_BATT_WARNING_EVT);
 
 	/*
-	 * stop temp measurement
+	 * stop temp timer
 	 */
 	osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
+	osal_stop_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT);
+	osal_stop_timerEx(ti->task_id, TH_HIGH_TEMP_WARNING_EVT);
 
 	/*
 	 * stop auto power off
@@ -604,8 +615,10 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 static void ther_enter_pm3(struct ther_info *ti)
 {
 	ti->power_mode = PM_3;
+	ti->powering_down = FALSE;
+
 	/* go to PM3 */
-    SLEEPCMD |= BV(0) | BV(1);
+    SLEEPCMD = (SLEEPCMD & ~0x3) | BV(0) | BV(1);
     PCON |=BV(0);
 }
 
@@ -783,7 +796,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 					ther_send_temp_indicate(ti->task_id, ti->temp_current);
 				}
 			} else {
-				ther_save_temp_to_local(ti->temp_current);
+//				ther_save_temp_to_local(ti->temp_current);
 			}
 
 			if (ti->temp_current != ti->temp_last_saved) {
@@ -942,6 +955,7 @@ void HalLedExitSleep(void) {
 
 }
 
+#ifdef POWER_SAVING
 void ther_wake_lock(void)
 {
 	struct ther_info *ti = &ther_info;
@@ -961,6 +975,9 @@ void ther_wake_unlock(void)
 		osal_pwrmgr_task_state(ti->task_id, PWRMGR_CONSERVE);
 	}
 }
-
+#else
+void ther_wake_lock(void) {}
+void ther_wake_unlock(void) {}
+#endif
 
 

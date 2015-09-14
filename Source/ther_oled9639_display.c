@@ -509,6 +509,8 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 		return;
 	}
 
+	oled_open_iic();
+
 	switch (type) {
 	case OLED_CONTENT_TIME:
 		if (od->picture == OLED_PICTURE1) {
@@ -571,6 +573,8 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 	default:
 		break;
 	}
+
+	oled_close_iic();
 }
 
 void oled_show_picture(uint8 picture, uint16 remain_ms, struct display_param *param)
@@ -688,15 +692,19 @@ void oled_display_state_machine(void)
 		break;
 
 	case STATE_INIT_DEVICE:
-		ther_wake_lock();
+//		ther_wake_lock();
 
+		oled_open_iic();
 		oled_drv_init_device();
+		oled_close_iic();
 
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_INIT_DEVICE_TIME);
 		break;
 
 	case STATE_DISPLAY_ON:
+		oled_open_iic();
 		oled_display_draw_picture(od);
+		oled_close_iic();
 
 		od->event_report(OLED_EVENT_DISPLAY_ON, od->picture);
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, od->remain_ms);
@@ -711,18 +719,20 @@ void oled_display_state_machine(void)
 		break;
 
 	case STATE_EXIT_VCC:
+		oled_open_iic();
 		oled_drv_display_off();
 		oled_drv_charge_pump_disable();
+		oled_close_iic();
+
 //		oled_drv_power_off_vcc();
 
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_EXIT_VCC_TIME);
 		break;
 
 	case STATE_EXIT_VDD:
-		oled_drv_power_off_vdd();
-		oled_drv_exit();
+//		oled_drv_power_off_vdd();
 
-		ther_wake_unlock();
+//		ther_wake_unlock();
 
 		osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
 		break;
