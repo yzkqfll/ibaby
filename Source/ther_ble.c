@@ -36,6 +36,8 @@
 
 #include "ther_batt_service.h"
 #include "ther_private_service.h"
+#include "ther_wechat.h"
+#include "ther_wechat_service.h"
 #include "ther_devinfo_service.h"
 
 #include "ther_uart.h"
@@ -52,6 +54,7 @@ struct ble_info {
 
 	void (*handle_ts_event)(unsigned char event);
 	void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len);
+	void (*handle_wechat_event)(unsigned char event, unsigned char *data, unsigned char *len);
 
 	uint16 gap_handle;
 	gaprole_States_t gap_role_state;
@@ -124,7 +127,7 @@ static uint8 scan_response[] =
 
 	// Tx power level
 	GAP_ADTYPE_POWER_LEVEL,
-	0       // 0dBm
+	0,       // 0dBm
 };
 
 // Advertisement data
@@ -140,8 +143,24 @@ static uint8 advertising_data[] =
 	// service UUID
 	0x03,   // length of this data
 	GAP_ADTYPE_16BIT_MORE,
+/*
 	LO_UINT16( THERMOMETER_SERV_UUID ),
 	HI_UINT16( THERMOMETER_SERV_UUID ),
+*/
+	LO_UINT16( THER_WECHAT_UUID ),
+	HI_UINT16( THER_WECHAT_UUID ),
+
+	0x0A,
+	GAP_ADTYPE_MANUFACTURER_SPECIFIC,
+	0xFE,
+	0x01,
+	0x01,
+	0x00,
+	0x00,
+	0x00,
+	0x00,
+	0x00,
+	0x00,
 };
 
 // Device name attribute value
@@ -156,7 +175,14 @@ unsigned short ble_get_gap_handle(void)
 
 void ble_get_mac(uint8 *mac)
 {
-	GAPRole_GetParameter(GAPROLE_BD_ADDR, mac);
+	uint8 data[B_ADDR_LEN];
+	uint8 i;
+
+	GAPRole_GetParameter(GAPROLE_BD_ADDR, data);
+
+	for (i = 0; i < B_ADDR_LEN; i++) {
+		mac[i] = data[B_ADDR_LEN -1 - i];
+	}
 }
 
 /*
@@ -178,6 +204,22 @@ static void ble_gaprole_state_change(gaprole_States_t new_state)
 	msg->hdr.event = BLE_STATUS_CHANGE_EVENT;
 
 	switch (new_state) {
+		case GAPROLE_STARTED:
+			ble_get_mac(&advertising_data[sizeof(advertising_data) - B_ADDR_LEN]);
+			if (1)
+			{
+				uint8 i;
+
+				print(LOG_INFO, MODULE "MAC: ");
+				for (i = 0; i < B_ADDR_LEN; i++) {
+					print(LOG_INFO, "%02X ", advertising_data[sizeof(advertising_data) - B_ADDR_LEN + i]);
+				}
+				print(LOG_INFO, "\n");
+			}
+			GAPRole_SetParameter( GAPROLE_ADVERT_DATA, sizeof(advertising_data), advertising_data );
+
+			break;
+
 		case GAPROLE_CONNECTED:
 
 			/* Get connection handle */
@@ -422,8 +464,24 @@ static void ble_init_private_service(void)
 	ther_add_private_service(GATT_ALL_SERVICES, ble_private_service);
 }
 
+void ble_wechat_service(uint8 event, uint8 *data, uint8 *len)
+{
+	struct ble_info *bi = &ble_info;
+
+	bi->handle_wechat_event(event, data, len);
+
+	return;
+}
+
+static void ble_init_wechat_service(uint8 task_id)
+{
+	ther_wechat_init(task_id);
+	ther_add_wechat_service(GATT_ALL_SERVICES, ble_wechat_service);
+}
+
 unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char event),
-		void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len))
+		void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len),
+		void (*handle_wechat_event)(unsigned char event, unsigned char *data, unsigned char *len))
 {
 	struct ble_info *bi = &ble_info;
 
@@ -433,6 +491,7 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 
 	bi->handle_ts_event = handle_ts_event;
 	bi->handle_ps_event = handle_ps_event;
+	bi->handle_wechat_event = handle_wechat_event;
 
 	/* init param */
 	bi->advertising_enable = TRUE;
@@ -461,6 +520,7 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 	ble_init_thermometer_service();
 	ble_init_batt_service();
 	ble_init_private_service();
+	ble_init_wechat_service(bi->task_id);
 
 	ble_start();
 

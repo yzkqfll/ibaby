@@ -66,7 +66,7 @@ struct oled_display {
 	bool powering_off;
 
 	uint8 picture;
-	uint16 remain_ms;
+	uint32 remain_ms;
 
 	/* first picture param */
 	bool bt_link;
@@ -577,7 +577,7 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 	oled_close_iic();
 }
 
-void oled_show_picture(uint8 picture, uint16 remain_ms, struct display_param *param)
+void oled_show_picture(uint8 picture, uint32 remain_ms, struct display_param *param)
 {
 	struct oled_display *od = &display;
 
@@ -596,7 +596,7 @@ void oled_show_picture(uint8 picture, uint16 remain_ms, struct display_param *pa
 	osal_start_timerEx(od->task_id, TH_DISPLAY_EVT, DISPLAY_10MS);
 }
 
-void oled_show_next_picture(uint16 time_ms, struct display_param *param)
+void oled_show_next_picture(uint32 time_ms, struct display_param *param)
 {
 	struct oled_display *od = &display;
 

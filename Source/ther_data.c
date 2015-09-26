@@ -31,6 +31,7 @@
 #include "peripheral.h"
 #include "gapbondmgr.h"
 #include "ther_service.h"
+#include "ther_wechat.h"
 #include "thermometer.h"
 
 #include "ther_uart.h"
@@ -187,23 +188,25 @@ void ther_send_history_temp(unsigned char task_id, uint8 *data, uint8 len)
 }
 
 
-void ther_handle_gatt_msg(gattMsgEvent_t *msg)
+void ther_handle_gatt_msg(gattMsgEvent_t *gatt_msg)
 {
 	/*
 	 * Indication Confirmation
 	 */
-	if(msg->method == ATT_HANDLE_VALUE_CFM)
+	if(gatt_msg->method == ATT_HANDLE_VALUE_CFM)
 	{
 //		thermometerSendStoredMeas();
+
+		ther_wechat_handle_indicate_confirm((uint8 *)&gatt_msg->msg);
 	}
 
-	if (msg->method == ATT_HANDLE_VALUE_NOTI ||
-			msg->method == ATT_HANDLE_VALUE_IND )
+	if (gatt_msg->method == ATT_HANDLE_VALUE_NOTI ||
+			gatt_msg->method == ATT_HANDLE_VALUE_IND )
 	{
 //		timeAppIndGattMsg( msg );
 	}
-	else if ( msg->method == ATT_READ_RSP ||
-			msg->method == ATT_WRITE_RSP )
+	else if ( gatt_msg->method == ATT_READ_RSP ||
+			gatt_msg->method == ATT_WRITE_RSP )
 	{
 	}
 	else

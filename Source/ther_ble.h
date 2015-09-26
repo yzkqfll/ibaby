@@ -19,7 +19,8 @@ struct ble_status_change_msg {
 void ble_get_mac(uint8 *mac);
 
 unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char event),
-		void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len));
+		void (*handle_ps_event)(unsigned char event, unsigned char *data, unsigned char *len),
+		void (*handle_wechat_event)(unsigned char event, unsigned char *data, unsigned char *len));
 void ther_ble_exit(void);
 
 void ble_start_advertise(void);

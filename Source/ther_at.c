@@ -226,6 +226,44 @@ static uint8 at_set_ldo_off(char *ret_buf)
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
+static unsigned short get_ave_val(unsigned short val[], uint8 num)
+{
+	unsigned char i, j;
+	unsigned char max_index;
+	uint16 tmp;
+	uint32 sum = 0;
+
+/*	for (i = 0; i < num; i++) {
+		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
+	}*/
+
+	if (num < 3)
+		return val[num / 2];
+
+	for (i = 0; i < num; i++) {
+		max_index = i;
+		for (j = i + 1; j < num; j++) {
+			if (val[max_index] < val[j]) {
+				max_index = j;
+			}
+		}
+		tmp = val[i];
+		val[i] = val[max_index];
+		val[max_index] = tmp;
+	}
+
+/*	for (i = 0; i < num; i++) {
+		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
+	}*/
+
+	for (i = 15; i < 25; i++) {
+		sum += val[i];
+	}
+//	print(LOG_DBG, MODULE "sum %ld\n", sum);
+
+	return sum / 10;
+}
+
 static uint8 at_get_adc(char *ret_buf, uint8 channel)
 {
 	unsigned short adc = ther_get_adc(channel);
@@ -233,9 +271,20 @@ static uint8 at_get_adc(char *ret_buf, uint8 channel)
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
+#define CH0_SAMPLE_NUM 40
 static uint8 at_get_hw_adc(char *ret_buf, uint8 channel)
 {
 	unsigned short adc = ther_get_hw_adc(channel);
+
+	if (channel == HAL_ADC_CHANNEL_0) {
+		uint8 i;
+		uint16 sample_adc[CH0_SAMPLE_NUM] = {0};
+
+		for (i = 0; i < CH0_SAMPLE_NUM; i++) {
+			sample_adc[i] = ther_get_hw_adc(channel);
+		}
+		adc = get_ave_val(sample_adc, CH0_SAMPLE_NUM);
+	}
 
 	return sprintf((char *)ret_buf, "+HWADC%d:%d\n", channel, adc);
 }

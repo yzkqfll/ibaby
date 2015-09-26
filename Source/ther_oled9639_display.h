@@ -51,8 +51,8 @@ void oled_display_exit(void);
 void oled_display_state_machine(void);
 void oled_display_power_off(void);
 void oled_update_picture(uint8 type, bool show, uint16 val);
-void oled_show_picture(uint8 picture, uint16 remain_ms, struct display_param *param);
-void oled_show_next_picture(uint16 time_ms, struct display_param *param);
+void oled_show_picture(uint8 picture, uint32 remain_ms, struct display_param *param);
+void oled_show_next_picture(uint32 time_ms, struct display_param *param);
 
 #endif
 

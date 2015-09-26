@@ -51,6 +51,8 @@
 #include "ther_misc.h"
 #include "ther_batt_service.h"
 #include "ther_private_service.h"
+#include "ther_wechat_service.h"
+#include "ther_wechat.h"
 #include "ther_port.h"
 #include "ther_storage.h"
 
@@ -368,6 +370,30 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 	}
 }
 
+
+static void ther_handle_wechat_event(unsigned char event, unsigned char *data, unsigned char *len)
+{
+	struct ther_info *ti = &ther_info;
+
+	switch (event) {
+	case THER_WECHAT_DATA_WRITE:
+		ther_wechat_write(data, len);
+		break;
+
+	case THER_WECHAT_SET_INDICATE:
+		ther_wechat_send_auth_req();
+		break;
+
+	case THER_WECHAT_DATE_READ:
+		print(LOG_DBG, MODULE "THER_WECHAT_DATE_READ\n");
+		break;
+
+	default:
+		*len = 0;
+		break;
+	}
+}
+
 static void ther_handle_ble_status_change(struct ther_info *ti, struct ble_status_change_msg *msg)
 {
 	if (msg->type == BLE_DISCONNECT) {
@@ -507,7 +533,7 @@ static void ther_device_init(struct ther_info *ti)
 	ti->next_warning_threshold = ti->high_temp_threshold;
 
 	/* ble init */
-	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event);
+	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event, ther_handle_wechat_event);
 
 //	HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );
 
@@ -570,7 +596,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
 
 	/* test */
-//	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 5000);
+//	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1000);
 }
 
 static void ther_system_power_off_pre(struct ther_info *ti)
@@ -634,7 +660,7 @@ static void ther_system_power_off_post(struct ther_info *ti)
 
 	ther_enter_pm3(ti);
 }
-
+static uint16 cnt = 0;
 /*********************************************************************
  * @fn      Thermometer_ProcessEvent
  *
@@ -892,18 +918,15 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 
 	if (events & TH_TEST_EVT) {
-//		oled_picture_inverse();
+		ther_temp_power_on();
+		ti->temp_current = (int16)(ther_get_temp() * 100 + 0.5);
 
-//		print(LOG_DBG, MODULE "live\n");
-
-//		oled_show_temp(TRUE, ti->current_temp);
-
-//		ther_spi_w25x_test(0,1,32);
-
-//		print(LOG_DBG, "ADC0 %d\n", ther_get_adc(0));
-//		print(LOG_DBG, "ADC1 %d\n", ther_get_adc(1));
-
-		osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1000);
+		cnt++;
+		if (cnt % 40 == 0) {
+			osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(3));
+		} else {
+			osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1);
+		}
 
 		return (events ^ TH_TEST_EVT);
 	}
