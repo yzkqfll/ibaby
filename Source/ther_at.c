@@ -226,10 +226,9 @@ static uint8 at_set_ldo_off(char *ret_buf)
 	return sprintf((char *)ret_buf, "%s\n", "OK");
 }
 
-static unsigned short get_ave_val(unsigned short val[], uint8 num)
+static unsigned short get_ave_val(unsigned short val[], uint16 num)
 {
-	unsigned char i, j;
-	unsigned char max_index;
+	uint16 i, j, max_index;
 	uint16 tmp;
 	uint32 sum = 0;
 
@@ -256,12 +255,19 @@ static unsigned short get_ave_val(unsigned short val[], uint8 num)
 		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
 	}*/
 
-	for (i = 15; i < 25; i++) {
+#if 0
+	for (i = num / 2 - 5; i < num / 2 + 5; i++) {
 		sum += val[i];
 	}
 //	print(LOG_DBG, MODULE "sum %ld\n", sum);
-
 	return sum / 10;
+#endif
+	for (i = 0; i < num; i++) {
+		sum += val[i];
+	}
+//	print(LOG_DBG, MODULE "sum %ld, avg is %ld\n", sum, sum / num);
+	return sum / num;
+
 }
 
 static uint8 at_get_adc(char *ret_buf, uint8 channel)
@@ -271,13 +277,13 @@ static uint8 at_get_adc(char *ret_buf, uint8 channel)
 	return sprintf((char *)ret_buf, "+ADC%d:%d\n", channel, adc);
 }
 
-#define CH0_SAMPLE_NUM 40
+#define CH0_SAMPLE_NUM 150
 static uint8 at_get_hw_adc(char *ret_buf, uint8 channel)
 {
 	unsigned short adc = ther_get_hw_adc(channel);
 
 	if (channel == HAL_ADC_CHANNEL_0) {
-		uint8 i;
+		uint16 i;
 		uint16 sample_adc[CH0_SAMPLE_NUM] = {0};
 
 		for (i = 0; i < CH0_SAMPLE_NUM; i++) {

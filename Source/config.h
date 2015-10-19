@@ -15,5 +15,19 @@
 
 #define PRE_RELEASE
 
+#define USE_6448_DISPLAY
+#ifdef USE_6448_DISPLAY
+
+#define CONFIG_USE_6448_DISPLAY
+#include "ther_oled6448_drv.h"
+#include "ther_oled6448_display.h"
+
+#else
+
+#define CONFIG_USE_9639_DISPLAY
+#include "ther_oled9639_drv.h"
+#include "ther_oled9639_display.h"
+#endif
+
 #endif
 

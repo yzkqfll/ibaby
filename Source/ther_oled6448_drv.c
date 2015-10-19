@@ -22,7 +22,7 @@
 #include "config.h"
 #include "ther_port.h"
 
-#ifdef CONFIG_USE_9639_DISPLAY
+#ifdef CONFIG_USE_6448_DISPLAY
 
 #define MODULE "[OLED DRV] "
 
@@ -223,10 +223,10 @@ static void set_display_onoff(unsigned val)
 static void set_start_page(unsigned char start_page)
 {
 	/*
-	 * OLED 96x39 has 39 lines, 8 line per page.
-	 * 39 lines => 5 page
+	 * OLED 64x48 has 48 lines, 8 line per page.
+	 * 48 lines => 6 page
 	 *
-	 * valid range [0, 4]
+	 * valid range [0, 6)
 	 */
 
 	send_cmd(CMD_START_PAGE(start_page));
@@ -410,9 +410,9 @@ void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,
 
 		set_start_page(page);
 
-		col = start_col;
+		col = BASE_COL + start_col;
 		set_start_column(col);
-		for (; col < end_col; col++) {
+		for (; col < BASE_COL + end_col; col++) {
 			send_data(data);
 		}
 	}
@@ -428,9 +428,9 @@ void oled_drv_write_block(unsigned char start_page, unsigned char end_page,
 
 		set_start_page(page);
 
-		col = start_col;
+		col = BASE_COL + start_col;
 		set_start_column(col);
-		for (; col < end_col; col++) {
+		for (; col < BASE_COL + end_col; col++) {
 			send_data(*data++);
 		}
 	}
@@ -445,9 +445,9 @@ void oled_drv_fill_screen(unsigned char val)
 
 		set_start_page(page);
 
-		col = 0;
+		col = BASE_COL;
 		set_start_column(col);
-		for (; col < MAX_COL; col++) {
+		for (; col < BASE_COL + MAX_COL; col++) {
 			send_data(val);
 		}
 	}
@@ -495,7 +495,7 @@ void oled_drv_init_device(void)
 	set_start_column(0);
 
 	set_display_clock(0xA0); // yuanjie: 0x80
-	set_multiplex_ratio(0x27); // yuanjie: 0x3f
+	set_multiplex_ratio(0x2F); // 1/39 Duty (0x00~0x2F)
 
 	set_addressing_mode(PAGE_ADDRESSING_MODE);
 

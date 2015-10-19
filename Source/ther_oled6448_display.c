@@ -13,7 +13,6 @@
  *
  */
 
-
 #include "Comdef.h"
 #include "OSAL.h"
 #include "hal_board.h"
@@ -25,7 +24,7 @@
 
 #include "thermometer.h"
 
-#ifdef CONFIG_USE_9639_DISPLAY
+#ifdef CONFIG_USE_6448_DISPLAY
 
 #define MODULE "[DISP   ] "
 
@@ -84,49 +83,49 @@ struct oled_display {
 static struct oled_display display;
 
 /* Time */
-#define TIME_HOUR_1_START_COL 1
-#define TIME_HOUR_1_END_COL 11
-#define TIME_HOUR_2_START_COL 11
-#define TIME_HOUR_2_END_COL 21
+#define TIME_HOUR_1_START_COL (1)
+#define TIME_HOUR_1_END_COL (TIME_HOUR_1_START_COL + 10)
+#define TIME_HOUR_2_START_COL (11)
+#define TIME_HOUR_2_END_COL (TIME_HOUR_2_START_COL + 10)
 
-#define TIME_COLON_START_COL 22
-#define TIME_COLON_END_COL 28
+#define TIME_COLON_START_COL (22)
+#define TIME_COLON_END_COL (TIME_COLON_START_COL + 6)
 
-#define TIME_MIN_1_START_COL 29
-#define TIME_MIN_1_END_COL 39
-#define TIME_MIN_2_START_COL 39
-#define TIME_MIN_2_END_COL 49
+#define TIME_MIN_1_START_COL (29)
+#define TIME_MIN_1_END_COL (TIME_MIN_1_START_COL + 10)
+#define TIME_MIN_2_START_COL (39)
+#define TIME_MIN_2_END_COL (TIME_MIN_2_START_COL + 10)
 
 
 /* BT link*/
-#define BLUETOOTH_START_COL 62
-#define BLUETOOTH_END_COL 72
+#define BLUETOOTH_START_COL (0)
+#define BLUETOOTH_END_COL (BLUETOOTH_START_COL + 10)
 
 /* Batt */
-#define BATT_START_COL 74
-#define BATT_END_COL 94
+#define BATT_START_COL (44)
+#define BATT_END_COL (BATT_START_COL + 20)
 
 /* Temp */
-#define TEMP_NEGATIVE_START_COL 2
-#define TEMP_NEGATIVE_END_COL 14
+#define TEMP_NEGATIVE_START_COL (2)
+#define TEMP_NEGATIVE_END_COL (TEMP_NEGATIVE_START_COL + 12)
 
-#define TEMP_1_START_COL 15
-#define TEMP_1_END_COL 28
-#define TEMP_2_START_COL 28
-#define TEMP_2_END_COL 41
+#define TEMP_1_START_COL (0)
+#define TEMP_1_END_COL (TEMP_1_START_COL + 13)
+#define TEMP_2_START_COL TEMP_1_END_COL
+#define TEMP_2_END_COL (TEMP_2_START_COL + 13)
 
-#define TEMP_DOT_START_COL 42
-#define TEMP_DOT_END_COL 50
+#define TEMP_DOT_START_COL TEMP_2_END_COL
+#define TEMP_DOT_END_COL (TEMP_DOT_START_COL + 8)
 
-#define TEMP_3_START_COL 51
-#define TEMP_3_END_COL 64
+#define TEMP_3_START_COL TEMP_DOT_END_COL
+#define TEMP_3_END_COL (TEMP_3_START_COL + 13)
 /*
 #define TEMP_4_START_COL 64
 #define TEMP_4_END_COL 77
 */
 
-#define TEMP_CELSIUS_START_COL 67
-#define TEMP_CELSIUS_END_COL 87
+#define TEMP_CELSIUS_START_COL TEMP_3_END_COL
+#define TEMP_CELSIUS_END_COL (TEMP_CELSIUS_START_COL + 20)
 
 /* MAX text */
 #define MAX_TEXT_START_COL 0
@@ -134,33 +133,36 @@ static struct oled_display display;
 
 /* MAX text negative */
 
-#define MAX_TEMP_NEGATIVE_START_COL 38
-#define MAX_TEMP_NEGATIVE_END_COL 50
+#define MAX_TEMP_NEGATIVE_START_COL (2)
+#define MAX_TEMP_NEGATIVE_END_COL (MAX_TEMP_NEGATIVE_START_COL + 12)
 
 /* MAX Temp */
-#define MAX_TEMP_1_START_COL 50
-#define MAX_TEMP_1_END_COL 63
-#define MAX_TEMP_2_START_COL 63
-#define MAX_TEMP_2_END_COL 76
+#define MAX_TEMP_1_START_COL 0
+#define MAX_TEMP_1_END_COL (MAX_TEMP_1_START_COL + 13)
+#define MAX_TEMP_2_START_COL MAX_TEMP_1_END_COL
+#define MAX_TEMP_2_END_COL (MAX_TEMP_2_START_COL + 13)
 
-#define MAX_TEMP_DOT_START_COL 76
-#define MAX_TEMP_DOT_END_COL 84
+#define MAX_TEMP_DOT_START_COL MAX_TEMP_2_END_COL
+#define MAX_TEMP_DOT_END_COL (MAX_TEMP_DOT_START_COL + 8)
 
-#define MAX_TEMP_3_START_COL 84
-#define MAX_TEMP_3_END_COL 97
+#define MAX_TEMP_3_START_COL MAX_TEMP_DOT_END_COL
+#define MAX_TEMP_3_END_COL (MAX_TEMP_3_START_COL + 13)
 
 /*
 #define MAX_TEMP_4_START_COL x
 #define MAX_TEMP_4_END_COL x
 */
 
+#define MAX_TEMP_CELSIUS_START_COL MAX_TEMP_3_END_COL
+#define MAX_TEMP_CELSIUS_END_COL (MAX_TEMP_CELSIUS_START_COL + 20)
+
 /*
  * ROW * COL
  */
 
-static const unsigned char welcome_24x90[] =
+static const unsigned char welcome_24x64[] =
 {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xF8, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x7F, 0xFE, 0xF0, 0xC0, 0xF8, 0xFF, 0x1F, 0xFF, 0xF8, 0xC0, 0xE0, 0xFE, 0x7F, 0x0F, 0x00, 0x60, 0xFC, 0xFE, 0x3F, 0x37, 0x33, 0x37, 0x3F, 0x3E, 0x3C, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xF8, 0xFE, 0xFE, 0x07, 0x07, 0x03, 0x03, 0x07, 0x00, 0x00, 0xF8, 0xFE, 0xFF, 0x07, 0x03, 0x03, 0x07, 0x8F, 0xFE, 0xFC, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x0F, 0x07, 0x03, 0x07, 0xFF, 0xFE, 0xFE, 0x07, 0x07, 0x03, 0x07, 0xFF, 0xFE, 0x00, 0x00, 0x00, 0xFC, 0xFE, 0xBF, 0x37, 0x33, 0x33, 0x3F, 0x3E, 0x3C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x07, 0x07, 0x07, 0x00, 0x00, 0x00, 0x07, 0x07, 0x07, 0x03, 0x00, 0x00, 0x00, 0x00, 0x03, 0x07, 0x07, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x00, 0x00, 0x07, 0x07, 0x07, 0x00, 0x00, 0x01, 0x03, 0x07, 0x07, 0x06, 0x06, 0x06, 0x06, 0x06, 0x00, 0x01, 0x03, 0x07, 0x07, 0x06, 0x06, 0x06, 0x07, 0x03, 0x01, 0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00, 0x00, 0x00, 0x07, 0x07, 0x07, 0x00, 0x00, 0x00, 0x00, 0x07, 0x07, 0x00, 0x00, 0x00, 0x01, 0x03, 0x07, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x00, 0x00, 0x00
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x40, 0xE0, 0xE0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0xFC, 0xF4, 0xFC, 0xFC, 0xE4, 0xFC, 0x0C, 0x04, 0x70, 0xFC, 0xBC, 0x24, 0x24, 0x3C, 0xBC, 0x30, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xF8, 0xFC, 0x04, 0x04, 0x0C, 0x9C, 0x88, 0x00, 0x70, 0xFC, 0x8C, 0x04, 0x04, 0x0C, 0xFC, 0xF8, 0x04, 0xFC, 0xFE, 0x04, 0xFC, 0xFC, 0x04, 0xFC, 0xFC, 0x00, 0xF8, 0xFC, 0x2C, 0x24, 0x24, 0x3C, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x03, 0x03, 0x03, 0x01, 0x00, 0x00, 0x00, 0x02, 0x02, 0x03, 0x03, 0x02, 0x02, 0x00, 0x00, 0x01, 0x03, 0x03, 0x02, 0x03, 0x01, 0x01, 0x00, 0x00, 0x01, 0x03, 0x03, 0x02, 0x03, 0x01, 0x00, 0x02, 0x03, 0x03, 0x02, 0x03, 0x03, 0x02, 0x03, 0x03, 0x02, 0x00, 0x01, 0x03, 0x03, 0x03, 0x03, 0x01, 0x00, 0x00
 };
 
 static const unsigned char goodbye_24x90[] =
@@ -333,19 +335,19 @@ static void show_temp(bool show, int16 temp)
 
 	if (show) {
 		if (negative) {
-			oled_drv_write_block(2, 5, TEMP_NEGATIVE_START_COL, TEMP_NEGATIVE_END_COL, negative_24x12[0]);
+//			oled_drv_write_block(3, 6, TEMP_NEGATIVE_START_COL, TEMP_NEGATIVE_END_COL, negative_24x12[0]);
 		}
 
-		oled_drv_write_block(2, 5, TEMP_1_START_COL, TEMP_1_END_COL, number_24x13[first_num % 10]);
-		oled_drv_write_block(2, 5, TEMP_2_START_COL, TEMP_2_END_COL, number_24x13[sec_num]);
+		oled_drv_write_block(3, 6, TEMP_1_START_COL, TEMP_1_END_COL, number_24x13[first_num % 10]);
+		oled_drv_write_block(3, 6, TEMP_2_START_COL, TEMP_2_END_COL, number_24x13[sec_num]);
 
-		oled_drv_write_block(2, 5, TEMP_DOT_START_COL, TEMP_DOT_END_COL, dot_24x8[0]);
+		oled_drv_write_block(3, 6, TEMP_DOT_START_COL, TEMP_DOT_END_COL, dot_24x8[0]);
 
-		oled_drv_write_block(2, 5, TEMP_3_START_COL, TEMP_3_END_COL, number_24x13[third_num]);
+		oled_drv_write_block(3, 6, TEMP_3_START_COL, TEMP_3_END_COL, number_24x13[third_num]);
 
-		oled_drv_write_block(2, 5, TEMP_CELSIUS_START_COL, TEMP_CELSIUS_END_COL, celsius_24x20[0]);
+		oled_drv_write_block(3, 6, TEMP_CELSIUS_START_COL, TEMP_CELSIUS_END_COL, celsius_24x20[0]);
 	} else {
-		oled_drv_fill_block(2, 5, TEMP_NEGATIVE_START_COL, TEMP_CELSIUS_END_COL, 0);
+		oled_drv_fill_block(3, 6, TEMP_NEGATIVE_START_COL, TEMP_CELSIUS_END_COL, 0);
 	}
 }
 
@@ -409,9 +411,9 @@ static void show_bt_link(bool show)
 static void show_max_text(bool show)
 {
 	if (show) {
-		oled_drv_write_block(1, 4, MAX_TEXT_START_COL, MAX_TEXT_END_COL, max_text_24x38);
+		oled_drv_write_block(2, 5, MAX_TEXT_START_COL, MAX_TEXT_END_COL, max_text_24x38);
 	} else {
-		oled_drv_fill_block(1, 4, MAX_TEXT_START_COL, MAX_TEXT_END_COL, 0);
+		oled_drv_fill_block(2, 5, MAX_TEXT_START_COL, MAX_TEXT_END_COL, 0);
 	}
 }
 
@@ -439,18 +441,20 @@ static void show_max_temp(bool show, int16 temp)
 
 	if (show) {
 		if (negative) {
-			oled_drv_write_block(1, 4, MAX_TEMP_NEGATIVE_START_COL, MAX_TEMP_NEGATIVE_END_COL, negative_24x12[0]);
+//			oled_drv_write_block(3, 6, MAX_TEMP_NEGATIVE_START_COL, MAX_TEMP_NEGATIVE_END_COL, negative_24x12[0]);
 		}
 
-		oled_drv_write_block(1, 4, MAX_TEMP_1_START_COL, MAX_TEMP_1_END_COL, number_24x13[first_num % 10]);
-		oled_drv_write_block(1, 4, MAX_TEMP_2_START_COL, MAX_TEMP_2_END_COL, number_24x13[sec_num]);
+		oled_drv_write_block(3, 6, MAX_TEMP_1_START_COL, MAX_TEMP_1_END_COL, number_24x13[first_num % 10]);
+		oled_drv_write_block(3, 6, MAX_TEMP_2_START_COL, MAX_TEMP_2_END_COL, number_24x13[sec_num]);
 
-		oled_drv_write_block(1, 4, MAX_TEMP_DOT_START_COL, MAX_TEMP_DOT_END_COL, dot_24x8[0]);
+		oled_drv_write_block(3, 6, MAX_TEMP_DOT_START_COL, MAX_TEMP_DOT_END_COL, dot_24x8[0]);
 
-		oled_drv_write_block(1, 4, MAX_TEMP_3_START_COL, MAX_TEMP_3_END_COL, number_24x13[third_num]);
+		oled_drv_write_block(3, 6, MAX_TEMP_3_START_COL, MAX_TEMP_3_END_COL, number_24x13[third_num]);
+
+		oled_drv_write_block(3, 6, MAX_TEMP_CELSIUS_START_COL, MAX_TEMP_CELSIUS_END_COL, celsius_24x20[0]);
 
 	} else {
-		oled_drv_fill_block(1, 4, MAX_TEMP_1_START_COL, MAX_TEMP_3_END_COL, 0);
+		oled_drv_fill_block(3, 6, MAX_TEMP_1_START_COL, MAX_TEMP_CELSIUS_END_COL, 0);
 	}
 }
 
@@ -470,15 +474,14 @@ static void oled_display_draw_picture(struct oled_display *od)
 
 	switch (od->picture) {
 	case OLED_PICTURE_WELCOME:
-		oled_drv_write_block(1, 4, 3, 93, welcome_24x90);
+		oled_drv_write_block(1, 4, 0, MAX_COL, welcome_24x64);
 		break;
 
 	case OLED_PICTURE_GOODBYE:
-		oled_drv_write_block(1, 4, 3, 93, goodbye_24x90);
+		oled_drv_write_block(1, 4, 0, MAX_COL, goodbye_24x90);
 		break;
 
 	case OLED_PICTURE1:
-		show_time(TRUE, od->time);
 
 		show_bt_link(od->bt_link);
 
@@ -488,7 +491,8 @@ static void oled_display_draw_picture(struct oled_display *od)
 		break;
 
 	case OLED_PICTURE2:
-		show_max_text(TRUE);
+		show_time(TRUE, od->time);
+//		show_max_text(TRUE);
 		show_max_temp(TRUE, od->max_temp);
 
 		break;
@@ -508,7 +512,7 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 	if (od->cur_state != STATE_DISPLAY_ON) {
 		return;
 	}
-
+return;
 	oled_open_iic();
 
 	switch (type) {
@@ -516,9 +520,9 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 		if (od->picture == OLED_PICTURE1) {
 			if (show) {
 				od->time = val;
-				show_time(TRUE, od->time);
+//				show_time(TRUE, od->time);
 			} else {
-				show_time(FALSE, 0);
+//				show_time(FALSE, 0);
 			}
 
 		}
@@ -747,7 +751,7 @@ void oled_display_init(unsigned char task_id, void (*event_report)(unsigned char
 {
 	struct oled_display *od = &display;
 
-	print(LOG_INFO, MODULE "oled9639 display init\n");
+	print(LOG_INFO, MODULE "oled6448 display init\n");
 
 	osal_memset(od, 0, sizeof(struct oled_display));
 

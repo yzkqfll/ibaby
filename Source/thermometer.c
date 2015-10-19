@@ -44,7 +44,6 @@
 
 #include "ther_button.h"
 #include "ther_buzzer.h"
-#include "ther_oled9639_display.h"
 #include "ther_mtd.h"
 #include "ther_temp.h"
 #include "ther_at.h"
@@ -73,7 +72,7 @@ struct ther_info ther_info;
 /**
  * Display
  */
-#define DISPLAY_TIME SEC_TO_MS(5)
+#define DISPLAY_TIME SEC_TO_MS(10)
 #define DISPLAY_WELCOME_TIME SEC_TO_MS(2)
 #define DISPLAY_GOODBYE_TIME SEC_TO_MS(1)
 
@@ -596,7 +595,7 @@ static void ther_system_power_on(struct ther_info *ti)
 	osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
 
 	/* test */
-//	osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1000);
+	osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(10 * 60));
 }
 
 static void ther_system_power_off_pre(struct ther_info *ti)
@@ -918,15 +917,23 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 
 
 	if (events & TH_TEST_EVT) {
-		ther_temp_power_on();
-		ti->temp_current = (int16)(ther_get_temp() * 100 + 0.5);
+		{
+			struct display_param param;
 
-		cnt++;
-		if (cnt % 40 == 0) {
-			osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(3));
-		} else {
-			osal_start_timerEx(ti->task_id, TH_TEST_EVT, 1);
+			if (ti->display_picture > OLED_PICTURE_NONE) {
+				print(LOG_DBG, MODULE "ignore button press when picture is %d\n", ti->display_picture);
+				return (events ^ TH_TEST_EVT);
+			}
+
+			encap_picture_param(ti, &param);
+			if (ti->display_picture == OLED_PICTURE_NONE) {
+				oled_show_picture(OLED_PICTURE1, DISPLAY_TIME, &param);
+
+			} else {
+				oled_show_next_picture(DISPLAY_TIME, &param);
+			}
 		}
+		osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(10 * 60));
 
 		return (events ^ TH_TEST_EVT);
 	}

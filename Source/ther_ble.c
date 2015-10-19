@@ -143,12 +143,12 @@ static uint8 advertising_data[] =
 	// service UUID
 	0x03,   // length of this data
 	GAP_ADTYPE_16BIT_MORE,
-/*
 	LO_UINT16( THERMOMETER_SERV_UUID ),
 	HI_UINT16( THERMOMETER_SERV_UUID ),
-*/
+/*
 	LO_UINT16( THER_WECHAT_UUID ),
 	HI_UINT16( THER_WECHAT_UUID ),
+*/
 
 	0x0A,
 	GAP_ADTYPE_MANUFACTURER_SPECIFIC,
