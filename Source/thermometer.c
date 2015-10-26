@@ -83,7 +83,7 @@ struct ther_info ther_info;
 #define SYSTEM_POWER_ON_DELAY 100 /* ms */
 #define SYSTEM_POWER_OFF_TIME SEC_TO_MS(3)
 
-#define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600)
+#define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600) // SEC_TO_MS(600)
 #define AUTO_POWER_OFF_NUMBER_THRESHOLD 6
 
 /*
@@ -107,7 +107,7 @@ struct ther_info ther_info;
 /*
  * Batt
  */
-#define BATT_MEASURE_INTERVAL 120000
+#define BATT_MEASURE_INTERVAL SEC_TO_MS(120)
 #define BATT_MEASURE_CONFILCT_DELAY 5000
 
 #define LOW_BATT_WARNING_THRESHOLD 10 /* 10% */
@@ -449,9 +449,7 @@ static void ther_display_event_report(unsigned char event, uint16 arg)
 		if (ti->display_picture == OLED_PICTURE1) {
 			if (ti->batt_percentage < LOW_BATT_WARNING_THRESHOLD) {
 				ti->batt_in_dispaly = TRUE;
-#ifndef PRE_RELEASE
 				osal_start_timerEx(ti->task_id, TH_LOW_BATT_BLINK_EVT, LOW_BATT_BLINK_INTERVAL);
-#endif
 			}
 		}
 		break;
@@ -710,16 +708,14 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			ti->same_temp_number++;
 		} else {
 			ti->same_temp_number = 0;
-			ti->previous_temp = ti->temp_current;
+//			ti->previous_temp = ti->temp_current;
 		}
 
 		print(LOG_DBG, MODULE "auto power off: same_temp_number %d\n", ti->same_temp_number);
 
 		if (ti->same_temp_number >= AUTO_POWER_OFF_NUMBER_THRESHOLD) {
 			print(LOG_DBG, MODULE "auto power off\n");
-#ifndef PRE_RELEASE
 			ther_system_power_off_pre(ti);
-#endif
 		} else {
 			osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
 		}
@@ -793,6 +789,10 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 			ti->temp_current = (int16)(ther_get_temp() * 100 + 0.5);
 			ther_temp_power_off();
 
+			/* for auto power off, save only once */
+			if (ti->previous_temp == 0)
+				ti->previous_temp = ti->temp_current;
+
 			if (ti->temp_max < ti->temp_current) {
 				ti->temp_max = ti->temp_current;
 				print(LOG_DBG, MODULE "update max temp to %d\n", ti->temp_max);
@@ -821,7 +821,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 					ther_send_temp_indicate(ti->task_id, ti->temp_current);
 				}
 			} else {
-//				ther_save_temp_to_local(ti->temp_current);
+				ther_save_temp_to_local(ti->temp_current);
 			}
 
 			if (ti->temp_current != ti->temp_last_saved) {

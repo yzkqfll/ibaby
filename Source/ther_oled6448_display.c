@@ -512,17 +512,17 @@ void oled_update_picture(uint8 type, bool show, uint16 val)
 	if (od->cur_state != STATE_DISPLAY_ON) {
 		return;
 	}
-return;
+
 	oled_open_iic();
 
 	switch (type) {
 	case OLED_CONTENT_TIME:
-		if (od->picture == OLED_PICTURE1) {
+		if (od->picture == OLED_PICTURE2) {
 			if (show) {
 				od->time = val;
-//				show_time(TRUE, od->time);
+				show_time(TRUE, od->time);
 			} else {
-//				show_time(FALSE, 0);
+				show_time(FALSE, 0);
 			}
 
 		}
