@@ -81,7 +81,7 @@ static struct ther_buzzer buzzer;
 #define STEP_END (LEN - 1)
 
 static const unsigned short musics[BUZZER_MUSIC_NR][LEN] =  {
-	TONE_HIGH, 300, 200, 200, 100, /* power on */
+	TONE_HIGH, 450, 200, 200, 100, /* power on */
 	TONE_HIGH, 300, 200, 200, 100, /* power off */
 	TONE_LOW, 400, 200, 300, 100,  /* send temp */
 	TONE_LOW, 400, 200, 300, 100,  /* high temp warning */

@@ -79,8 +79,9 @@ struct config_info {
 #define ZERO_CAL_MAGIC 0x3333
 struct zero_cal {
 	unsigned short magic;
-    unsigned short hw_adc0;
-    short delta;
+    unsigned short hw_adc0; /* not used yet */
+    short adc0_delta;
+    float adc1_k;
     uint8 crc;
 };
 
@@ -772,34 +773,42 @@ void storage_show_info(void)
 }
 
 
-bool storage_write_zero_cal(unsigned short hw_adc0, short delta)
+bool storage_write_zero_cal(unsigned short hw_adc0, short adc0_delta, float adc1_k)
 {
 	struct mtd_info*m = get_mtd();
-	int8 ret = TRUE;
+	int8 ret = FALSE;
 	uint32 addr = SECTOR_ZERO_CAL * m->erase_size;
 	struct zero_cal zc;
 
 	if (ther_mtd_open(m))
 		return FALSE;
 
+	if (ther_mtd_read(m, addr, &zc, sizeof(zc), NULL)) {
+		goto out;
+	}
+
 	if (ther_mtd_erase(m, addr, m->erase_size, NULL)) {
-		ther_mtd_close(m);
-		return FALSE;
+		goto out;
 	}
 
 	zc.hw_adc0 = hw_adc0;
-	zc.delta = delta;
+	if (adc0_delta)
+		zc.adc0_delta = adc0_delta;
+	if (adc1_k)
+		zc.adc1_k = adc1_k;
 	zc.crc = crc7_be(0, (const uint8 *)&zc, OFFSET(struct zero_cal, crc));
 
 	if (ther_mtd_write(m, addr, &zc, sizeof(zc), NULL))
-		ret = FALSE;
+		goto out;
 
+	ret = TRUE;
+out:
 	ther_mtd_close(m);
 
 	return ret;
 }
 
-bool storage_read_zero_cal(short *delta)
+bool storage_read_zero_cal(short *adc0_delta, float *adc1_k)
 {
 	struct mtd_info*m = get_mtd();
 	int8 ret = TRUE;
@@ -811,21 +820,27 @@ bool storage_read_zero_cal(short *delta)
 		return FALSE;
 
 	if (ther_mtd_read(m, addr, &zc, sizeof(zc), NULL)) {
-		*delta = 0;
+		*adc0_delta = 0;
+		*adc1_k = 1;
 		ret = FALSE;
 	} else {
 
 		crc = crc7_be(0, (const uint8 *)&zc, OFFSET(struct zero_cal, crc));
-		if (crc == zc.crc)
-			*delta = zc.delta;
-		else
-			*delta = 0;
+		if (crc == zc.crc) {
+			*adc0_delta = zc.adc0_delta;
+			*adc1_k = zc.adc1_k;
+		} else {
+			*adc0_delta = 0;
+			*adc1_k = 1;
+		}
 	}
 
 	ther_mtd_close(m);
 
 	return ret;
 }
+
+
 
 bool storage_write_low_temp_cal(float R_low, float t_low)
 {

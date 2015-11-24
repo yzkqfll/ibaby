@@ -80,8 +80,7 @@ struct ther_info ther_info;
 /*
  * Power on/off
  */
-#define SYSTEM_POWER_ON_DELAY 100 /* ms */
-#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(3)
+#define SYSTEM_POWER_OFF_TIME SEC_TO_MS(2)
 
 #define AUTO_POWER_OFF_MEASURE_INTERVAL SEC_TO_MS(600) // SEC_TO_MS(600)
 #define AUTO_POWER_OFF_NUMBER_THRESHOLD 6
@@ -210,11 +209,10 @@ static void ther_handle_button(struct ther_info *ti, struct button_msg *msg)
 
 		} else if (ti->power_mode == PM_3) {
 
-			print(LOG_DBG, MODULE "power up system\n");
-//			osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
-//			ti->power_mode = PM_ACTIVE;
+			print(LOG_DBG, MODULE "power up system(use reset system instead)\n");
 
-			start_watchdog_timer(10);
+//			start_watchdog_timer(10);
+			system_reset();
 		}
 
 		break;
@@ -356,7 +354,7 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 			 */
 			osal_stop_timerEx(ti->task_id, TH_BATT_EVT);
 		}
-		*(unsigned short *)data = ther_get_hw_adc(HAL_ADC_CHANNEL_0);
+		*(unsigned short *)data = ther_get_hw_adc(HAL_ADC_CHANNEL_0, FROM_CUSTOM);
 		*len = 2;
 		break;
 
@@ -372,8 +370,6 @@ static void ther_handle_ps_event(unsigned char event, unsigned char *data, unsig
 
 static void ther_handle_wechat_event(unsigned char event, unsigned char *data, unsigned char *len)
 {
-	struct ther_info *ti = &ther_info;
-
 	switch (event) {
 	case THER_WECHAT_DATA_WRITE:
 		ther_wechat_write(data, len);
@@ -477,10 +473,14 @@ static void ther_display_event_report(unsigned char event, uint16 arg)
 
 static void ther_device_init(struct ther_info *ti)
 {
-	/* all gpio init */
+	/*
+	 * 1. gpio init
+	 */
 	ther_port_init();
 
-	/* uart init */
+	/*
+	 * 2. uart init
+	 */
 	ther_uart_init(UART_PORT_0, UART_BAUD_RATE_115200, ther_at_handle);
 	print(LOG_INFO, "\n");
 	print(LOG_INFO, "-------------------------------------\n");
@@ -496,25 +496,37 @@ static void ther_device_init(struct ther_info *ti)
 	print(LOG_INFO, "  All rights reserved.\r\n");
 	print(LOG_INFO, "-------------------------------------\r\n");
 
-	/* buzzer init */
+	/*
+	 * 2. buzzer init
+	 */
 	ther_buzzer_init(ti->task_id);
 
-	/* button init */
+	/*
+	 * 3. button init
+	 */
 	ther_button_init(ti->task_id);
 
-	/* oled display init */
+	/*
+	 * 4. oled display init
+	 */
 	oled_display_init(ti->task_id, ther_display_event_report);
 
-	/* mtd */
+	/*
+	 * 5. mtd
+	 */
 	ther_mtd_init();
 
-	/* storage */
+	/*
+	 * 6. storage
+	 */
 	ther_storage_init();
 
-	/* temp init */
+	/*
+	 * 7. temp init
+	 */
 	ther_temp_init();
 
-	/* read high temp thershold */
+	/* read high temp warning thershold */
 	if (!storage_read_high_temp_enabled(&ti->warning_enabled)) {
 		print(LOG_INFO, MODULE "read high temp enalbe failed, set enabled\n");
 
@@ -529,7 +541,9 @@ static void ther_device_init(struct ther_info *ti)
 	}
 	ti->next_warning_threshold = ti->high_temp_threshold;
 
-	/* ble init */
+	/*
+	 * 8. ble init
+	 */
 	ther_ble_init(ti->task_id, ther_handle_ts_event, ther_handle_ps_event, ther_handle_wechat_event);
 
 //	HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );
@@ -580,12 +594,12 @@ static void ther_system_power_on(struct ther_info *ti)
 	ti->temp_measure_interval = TEMP_MEASURE_INTERVAL;
 	ti->temp_measure_stage = TEMP_STAGE_SETUP;
 	ti->temp_max = -8000; /* -80 C */
-	osal_start_timerEx( ti->task_id, TH_TEMP_MEASURE_EVT, TEMP_POWER_SETUP_TIME);
+	osal_set_event(ti->task_id, TH_TEMP_MEASURE_EVT);
 
 	/*
 	 * batt measure
 	 */
-	osal_start_timerEx( ti->task_id, TH_BATT_EVT, 2000);
+	osal_set_event( ti->task_id, TH_BATT_EVT);
 
 	/*
 	 * auto power off
@@ -593,13 +607,18 @@ static void ther_system_power_on(struct ther_info *ti)
 	osal_start_timerEx( ti->task_id, TH_AUTO_POWER_OFF_EVT, AUTO_POWER_OFF_MEASURE_INTERVAL);
 
 	/* test */
-	osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(10 * 60));
+//	osal_start_timerEx(ti->task_id, TH_TEST_EVT, SEC_TO_MS(10 * 60));
 }
 
 static void ther_system_power_off_pre(struct ther_info *ti)
 {
 	/* test */
 	osal_stop_timerEx(ti->task_id, TH_TEST_EVT);
+
+	/*
+	 * stop auto power off
+	 */
+	osal_stop_timerEx(ti->task_id, TH_AUTO_POWER_OFF_EVT);
 
 	/*
 	 * batt measure
@@ -613,11 +632,6 @@ static void ther_system_power_off_pre(struct ther_info *ti)
 	osal_stop_timerEx(ti->task_id, TH_TEMP_MEASURE_EVT);
 	osal_stop_timerEx(ti->task_id, TH_HIS_TEMP_RESTORE_EVT);
 	osal_stop_timerEx(ti->task_id, TH_HIGH_TEMP_WARNING_EVT);
-
-	/*
-	 * stop auto power off
-	 */
-	osal_stop_timerEx(ti->task_id, TH_AUTO_POWER_OFF_EVT);
 
 	/*
 	 * play power off music
@@ -657,7 +671,7 @@ static void ther_system_power_off_post(struct ther_info *ti)
 
 	ther_enter_pm3(ti);
 }
-static uint16 cnt = 0;
+
 /*********************************************************************
  * @fn      Thermometer_ProcessEvent
  *
@@ -786,7 +800,7 @@ uint16 Thermometer_ProcessEvent(uint8 task_id, uint16 events)
 		case TEMP_STAGE_MEASURE:
 
 			ti->temp_last_saved = ti->temp_current;
-			ti->temp_current = (int16)(ther_get_temp() * 100 + 0.5);
+			ti->temp_current = (int16)(ther_read_temp() * 100 + 0.5);
 			ther_temp_power_off();
 
 			/* for auto power off, save only once */
@@ -965,10 +979,7 @@ void Thermometer_Init(uint8 task_id)
 	ti->task_id = task_id;
 	ti->power_mode = PM_ACTIVE;
 
-/*	start_watchdog_timer();
-	osal_start_timerEx( ti->task_id, TH_WATCHDOG_EVT, WATCHDOG_FEED_INTERVAL);*/
-
-	osal_start_timerEx(ti->task_id, TH_POWER_ON_EVT, SYSTEM_POWER_ON_DELAY);
+	osal_set_event(ti->task_id, TH_POWER_ON_EVT);
 }
 
 /*

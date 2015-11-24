@@ -42,6 +42,7 @@ struct ther_temp {
 	unsigned char channel;
 
 	short adc0_delta;
+	float adc1_k;
 
 	float B_delta;
 	float R25_delta;
@@ -122,84 +123,11 @@ void ther_temp_power_off(void)
 	disable_ldo();
 }
 
-#define SAMPLING_NUM 1
-
-static unsigned short get_ave_val(unsigned short val[], uint8 num)
-{
-	unsigned char i, j;
-	unsigned char max_index;
-	unsigned short tmp, sum = 0;
-
-	for (i = 0; i < num; i++) {
-//		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
-	}
-
-	if (num < 3)
-		return val[num / 2];
-
-	for (i = 0; i < num; i++) {
-		max_index = i;
-		for (j = i + 1; j < num; j++) {
-			if (val[max_index] < val[j]) {
-				max_index = j;
-			}
-		}
-		tmp = val[i];
-		val[i] = val[max_index];
-		val[max_index] = tmp;
-	}
-
-	for (i = 1; i < num - 1; i++) {
-		sum += val[i];
-	}
-	return sum / (num - 2);
-}
-
-unsigned short ther_get_hw_adc(unsigned char ch)
-{
-	unsigned short ave_adc;
-
-	if (ch <= HAL_ADC_CHANNEL_7) {
-		uint8 i;
-		unsigned short adc[SAMPLING_NUM] = {0};
-
-		for (i = 0; i < SAMPLING_NUM; i++)
-			adc[i] = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
-
-		ave_adc = get_ave_val(adc, SAMPLING_NUM);
-	}
-
-	return ave_adc;
-}
-
-static uint16 ther_adjust_adc1(uint16 adc1)
-{
-/*	uint16 new_adc1 = adc1 * 1.01;
-
-	print(LOG_DBG, "adc1 %d, new adc1 %d\n", adc1, new_adc1);*/
-	return (uint16)(adc1 * 1.01);
-}
-
-unsigned short ther_get_adc(unsigned char ch)
-{
-	struct ther_temp *t = &ther_temp;
-	unsigned short adc;
-
-	adc = ther_get_hw_adc(ch);
-
-	if (ch == HAL_ADC_CHANNEL_0)
-		adc += t->adc0_delta;
-	else if (ch == HAL_ADC_CHANNEL_1)
-		adc = ther_adjust_adc1(adc);
-
-	return adc;
-}
-
 void ther_set_adc0_delta(short delta)
 {
 	struct ther_temp *t = &ther_temp;
 
-	storage_write_zero_cal(0, delta);
+	storage_write_zero_cal(0, delta, 0);
 
 	t->adc0_delta = delta;
 }
@@ -209,6 +137,22 @@ short ther_get_adc0_delta(void)
 	struct ther_temp *t = &ther_temp;
 
 	return t->adc0_delta;
+}
+
+void ther_set_adc1_k(float k)
+{
+	struct ther_temp *t = &ther_temp;
+
+	storage_write_zero_cal(0, 0, k);
+
+	t->adc1_k = k;
+}
+
+float ther_get_adc1_k(void)
+{
+	struct ther_temp *t = &ther_temp;
+
+	return t->adc1_k;
 }
 
 void ther_set_temp_delta(float B_delta, float R25_delta)
@@ -229,12 +173,85 @@ void ther_get_temp_cal(float *B_delta, float *R25_delta)
 	*R25_delta = t->R25_delta;
 }
 
-float ther_get_Rt(unsigned char ch)
+#define SAMPLING_NUM 40
+
+static unsigned short cal_average(unsigned short val[], uint8 num)
+{
+	unsigned char i, j;
+	unsigned char max_index;
+	uint32 tmp, sum = 0;
+
+/*
+	for (i = 0; i < num; i++) {
+		print(LOG_DBG, MODULE "%d: %d\n", i, val[i]);
+	}
+*/
+
+	if (num < 3)
+		return val[num / 2];
+
+/*	for (i = 0; i < num; i++) {
+		max_index = i;
+		for (j = i + 1; j < num; j++) {
+			if (val[max_index] < val[j]) {
+				max_index = j;
+			}
+		}
+		tmp = val[i];
+		val[i] = val[max_index];
+		val[max_index] = tmp;
+	}*/
+
+	for (i = 1; i < num - 1; i++) {
+		sum += val[i];
+	}
+	return sum / (num - 2);
+}
+
+unsigned short ther_get_hw_adc(unsigned char ch, uint8 from)
+{
+	unsigned short ave_adc;
+	uint8 times;
+
+	if (from == FROM_AT_CMD && ch == HAL_ADC_CHANNEL_0)
+		times = SAMPLING_NUM;
+	else
+		times = 1;
+
+	if (ch <= HAL_ADC_CHANNEL_7) {
+		uint8 i;
+		unsigned short adc[SAMPLING_NUM] = {0};
+
+		for (i = 0; i < times; i++)
+			adc[i] = read_adc(ch, HAL_ADC_RESOLUTION_14, HAL_ADC_REF_AIN7);
+
+		ave_adc = cal_average(adc, times);
+	}
+
+	return ave_adc;
+}
+
+unsigned short ther_get_adc(unsigned char ch, uint8 from)
+{
+	struct ther_temp *t = &ther_temp;
+	unsigned short adc;
+
+	adc = ther_get_hw_adc(ch, from);
+
+	if (ch == HAL_ADC_CHANNEL_0)
+		adc += t->adc0_delta;
+	else if (ch == HAL_ADC_CHANNEL_1)
+		adc *= t->adc1_k;
+
+	return adc;
+}
+
+float ther_get_Rt(unsigned char ch, uint8 from)
 {
 	unsigned short adc;
 	float Rt = 0;
 
-	adc = ther_get_adc(ch);
+	adc = ther_get_adc(ch, from);
 
 	/* ADC -> Rt */
 	if (ch == HAL_ADC_CHANNEL_0) {
@@ -246,26 +263,13 @@ float ther_get_Rt(unsigned char ch)
 	return Rt;
 }
 
-float ther_get_ch_temp(unsigned char ch)
-{
-	struct ther_temp *t = &ther_temp;
-	float Rt, temp;
-
-	Rt = ther_get_Rt(ch);
-
-	/* Rt -> temp */
-	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
-
-	return temp;
-}
-
-static float ther_get_ch_temp_print(unsigned char ch)
+float ther_get_temp(unsigned char ch, uint8 from)
 {
 	struct ther_temp *t = &ther_temp;
 	unsigned short adc;
 	float Rt, temp;
 
-	adc = ther_get_adc(ch);
+	adc = ther_get_adc(ch, from);
 
 	/* ADC -> Rt */
 	if (ch == HAL_ADC_CHANNEL_0) {
@@ -277,18 +281,23 @@ static float ther_get_ch_temp_print(unsigned char ch)
 	/* Rt -> temp */
 	temp = calculate_temp_by_Rt(Rt, t->B_delta, t->R25_delta);
 
-	print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
-			ch, adc, Rt, temp);
+	if (from == FROM_CUSTOM) {
+		print(LOG_DBG, MODULE "ch %d adc %d, Rt %f, temp %.2f\n",
+				ch, adc, Rt, temp);
+	}
 
 	return temp;
 }
 
-float ther_get_temp(void)
+/*
+ * For thermometer
+ */
+float ther_read_temp(void)
 {
 	struct ther_temp *t = &ther_temp;
 	float temp;
 
-	temp = ther_get_ch_temp_print(t->channel);
+	temp = ther_get_temp(t->channel, FROM_CUSTOM);
 
 	if (t->channel == HAL_ADC_CHANNEL_1) {
 		if (temp > CH0_TEMP_MIN + TEMP_MARGIN && temp < CH0_TEMP_MAX - TEMP_MARGIN)
@@ -310,9 +319,9 @@ void ther_temp_init(void)
 
 	t->channel = HAL_ADC_CHANNEL_1;
 
-/*	storage_read_zero_cal(&t->adc0_delta);
-	print(LOG_INFO, MODULE "ADC0 delta is %d\n", t->adc0_delta);
+	storage_read_zero_cal(&t->adc0_delta, &t->adc1_k);
+	print(LOG_INFO, MODULE "ADC0 delta is %d, ADC1 k is %.2f\n", t->adc0_delta, t->adc1_k);
 
 	storage_read_temp_cal(&t->B_delta, &t->R25_delta);
-	print(LOG_INFO, MODULE "B_delta is %d, R25_delta is %d\n", t->B_delta, t->R25_delta);*/
+	print(LOG_INFO, MODULE "B_delta is %d, R25_delta is %d\n", t->B_delta, t->R25_delta);
 }

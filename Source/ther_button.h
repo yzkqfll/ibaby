@@ -25,6 +25,7 @@ struct button_msg {
 
 void ther_measure_button_time(void);
 void ther_button_init(unsigned char task_id);
+void ther_button_start_measure(void);
 
 #endif
 

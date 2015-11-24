@@ -519,7 +519,7 @@ unsigned char ther_ble_init(uint8 task_id, void (*handle_ts_event)(unsigned char
 	ble_init_devinfo();
 	ble_init_thermometer_service();
 	ble_init_batt_service();
-	ble_init_private_service();
+//	ble_init_private_service();
 	ble_init_wechat_service(bi->task_id);
 
 	ble_start();

@@ -3,8 +3,8 @@
 #define __THER_STORAGE_H__
 
 bool storage_test(void);
-bool storage_write_zero_cal(unsigned short hw_adc0, short delta);
-bool storage_read_zero_cal(short *delta);
+bool storage_write_zero_cal(unsigned short hw_adc0, short adc0_delta, float adc1_k);
+bool storage_read_zero_cal(short *adc0_delta, float *adc1_k);
 bool storage_write_low_temp_cal(float R_low, float t_low);
 bool storage_read_low_temp_cal(float *R_low, float *t_low);
 bool storage_write_high_temp_cal(float R_high, float t_high);

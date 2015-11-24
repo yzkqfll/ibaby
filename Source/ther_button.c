@@ -28,7 +28,7 @@
 
 #define BUTTON_MEASURE_INTERVAL 20
 
-#define SHORT_PRESS_TIME 10
+#define SHORT_PRESS_TIME 5
 #define LONG_PRESS_TIME 900
 
 struct ther_button {
@@ -90,6 +90,16 @@ void ther_button_init(unsigned char task_id)
 
 }
 
+
+void ther_button_start_measure(void)
+{
+	struct ther_button *bt = &ther_button;
+
+	osal_stop_timerEx(bt->task_id, TH_BUTTON_EVT);
+	osal_start_timerEx(bt->task_id, TH_BUTTON_EVT, 1);
+	bt->eclipse_ms = 0;
+}
+
 /*
 #pragma vector = P1INT_VECTOR
 __interrupt void P1_ISR(void)
@@ -99,13 +109,9 @@ HAL_ISR_FUNCTION(button_isr, P1INT_VECTOR)
 	HAL_ENTER_ISR();
 
 	if (P1IFG & BV(P1_BUTTON_BIT)) {
-		struct ther_button *bt = &ther_button;
-
 		P1IFG &= ~BV(P1_BUTTON_BIT);
 
-		osal_stop_timerEx(bt->task_id, TH_BUTTON_EVT);
-		osal_start_timerEx(bt->task_id, TH_BUTTON_EVT, BUTTON_MEASURE_INTERVAL);
-		bt->eclipse_ms = 0;
+		ther_button_start_measure();
 	}
 	/* clear P1 interrupt pending flag */
 	P1IF = 0;

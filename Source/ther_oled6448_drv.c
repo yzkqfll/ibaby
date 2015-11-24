@@ -138,7 +138,7 @@ struct ther_oled9639_drv {
 };
 
 static struct ther_oled9639_drv oled9639_drv = {
-	.contrast = 0xCF
+	.contrast = 0xFF
 };
 
 /*
@@ -392,12 +392,12 @@ void oled_drv_power_off_vdd(void)
 
 void oled_drv_power_on_vcc(void)
 {
-//	set_vcc_power(VCC_POWER_ON);
+	set_vcc_power(VCC_POWER_ON);
 }
 
 void oled_drv_power_off_vcc(void)
 {
-//	set_vcc_power(VCC_POWER_OFF);
+	set_vcc_power(VCC_POWER_OFF);
 }
 
 void oled_drv_fill_block(unsigned char start_page, unsigned char end_page,

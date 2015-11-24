@@ -943,7 +943,7 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>neobay_v1_2_dbg.hex</state>
+          <state>neobay_v3_2_test.hex</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>
@@ -1088,6 +1088,12 @@
   <group>
     <name>APP</name>
     <file>
+      <name>$PROJ_DIR$\..\Source\epb.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\epb_MmBp.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\hal_i2c.c</name>
     </file>
     <file>
@@ -1130,6 +1136,12 @@
       <name>$PROJ_DIR$\..\Source\ther_mtd.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\ther_oled6448_display.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_oled6448_drv.c</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\ther_oled9639_display.c</name>
     </file>
     <file>
@@ -1161,6 +1173,12 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\ther_uart_drv.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_wechat.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\ther_wechat_service.c</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\thermometer.c</name>
